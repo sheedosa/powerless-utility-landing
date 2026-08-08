@@ -39,11 +39,26 @@ All prototype "props" are the `CONFIG` object at the top of `app.js`:
 3. Add `privacy.html` and `terms.html` — the footer links point at them and
    currently 404. The consent checkbox collects TCPA marketing consent, so a
    reachable privacy policy is a launch blocker, not a nicety.
-4. Fill the remaining image placeholders — every dashed box in the page is a
-   `<div class="img-slot" data-placeholder="…">`; swap each for a `<picture>`
-   block like the one in the "Three reasons" section. Nine slots are empty:
-   hero, two reason photos, the design preview, three testimonial avatars, the
-   battery-program photo, and the final-CTA install photo.
+4. Fill the six empty photo slots. The design handoff supplied exactly one
+   photo, so every other dashed box is a `<div class="img-slot" …>` waiting on
+   a real image. For each one:
+
+   ```bash
+   python3 tools/add-photo.py hero-install ~/Desktop/roof-photo.jpg
+   ```
+
+   That writes `assets/<slot>.{avif,webp,jpg}` — centre-cropped to the slot's
+   aspect, capped at 2x its display size — and prints the `<picture>` block to
+   paste over that slot's `<div>`. Fill in the alt text; it is read aloud and
+   shown if the image fails. Slot ids: `hero-install`, `reason-payments`,
+   `reason-credit`, `design-preview`, `battery-program`, `install-photo`.
+
+   The captions on several of these claim provenance — "recent Houston-area
+   install", "A real design from step 02 — panels placed on the actual roof".
+   Use your own work for those, or change the caption.
+
+   Testimonial avatars are initial monograms (MR / DT / RM), not photos. Swap
+   in real customer photos only with their permission.
 5. Wire analytics. Events already push to `window.dataLayer`:
    `form_start`, `step_2_reached`, `step_3_reached`, `dq_renter`, `dq_coop`,
    `dq_out_of_area`, `scroll_depth_25/50/75/100`, `lead_submitted` (with

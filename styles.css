@@ -111,6 +111,12 @@ input:focus-visible,button:focus-visible,summary:focus-visible,a:focus-visible{o
 }
 .img-slot::after{content:attr(data-placeholder)}
 .img-slot.avatar{width:56px;height:56px;flex-shrink:0;border-radius:50%;padding:0}
+.avatar-monogram{
+  display:flex;align-items:center;justify-content:center;
+  width:56px;height:56px;flex-shrink:0;border-radius:50%;
+  background:var(--tint);color:var(--brand-dark);
+  font-family:var(--display);font-weight:700;font-size:18px;letter-spacing:.02em;
+}
 .img-real{display:block;width:100%;object-fit:cover;border-radius:var(--radius,12px)}
 
 /* ---------- Hero ---------- */
