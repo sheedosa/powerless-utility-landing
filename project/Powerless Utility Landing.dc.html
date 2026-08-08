@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<script src="./image-slot.js"></script>
+<style>
+html,body{margin:0;padding:0;background:#FFFFFF;color:#111417;font-family:'IBM Plex Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased;font-size:17px;line-height:1.6}
+a{color:#0077A8;text-decoration-color:rgba(0,119,168,.4)}a:hover{color:#00A0DF}
+button,input{font-family:inherit}
+summary::-webkit-details-marker{display:none}
+input:focus-visible,button:focus-visible,summary:focus-visible,a:focus-visible{outline:2px solid #0077A8;outline-offset:2px}
+details[open] summary svg{transform:rotate(180deg)}
+@keyframes pu-drain{from{width:calc(100% - 18px)}to{width:0%}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+</style>
+</helmet>
+<header style="display:flex;align-items:center;justify-content:space-between;gap:12px;max-width:1120px;margin:0 auto;padding:16px 20px">
+  <div style="display:flex;align-items:center;gap:10px">
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="4.5" fill="#E8B23A"></circle><g stroke="#E8B23A" stroke-width="2" stroke-linecap="round"><path d="M12 2v3"></path><path d="M12 19v3"></path><path d="M2 12h3"></path><path d="M19 12h3"></path><path d="M4.9 4.9l2.1 2.1"></path><path d="M17 17l2.1 2.1"></path><path d="M19.1 4.9L17 7"></path><path d="M7 17l-2.1 2.1"></path></g></svg>
+    <span style="font-family:'Archivo',sans-serif;font-weight:800;font-size:18px;letter-spacing:-0.01em;text-transform:uppercase;line-height:1">Powerless Utility</span>
+  </div>
+  <span style="font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:13px;color:#5B6670;white-space:nowrap"><sc-if value="{{ isDesktopView }}" hint-placeholder-val="{{ false }}">TX ⌁ SERVING TEXAS</sc-if><sc-if value="{{ isMobileView }}" hint-placeholder-val="{{ true }}">TX ⌁</sc-if></span>
+</header>
+
+<section data-screen-label="Hero + Form" style="background:#FFFFFF">
+  <div style="display:flex;flex-wrap:wrap;gap:36px 48px;max-width:1120px;margin:0 auto;padding:20px 20px 56px;align-items:flex-start">
+    <div style="flex:1 1 400px;min-width:0">
+      <!-- Alternate H1 variants (also switchable via the headlineVariant tweak or ?headline= / ?h= URL param):
+           B: "Texas rates went up again. Yours doesn't have to."
+           C: "Cut your electric bill by up to 60% with $0 down."
+           D: "Texas homeowners are seeing bills climb" -->
+      <h1 style="font-family:'Archivo',sans-serif;font-weight:800;font-size:clamp(34px,5.5vw,44px);line-height:1.05;letter-spacing:-0.02em;margin:10px 0 12px;text-wrap:pretty"><sc-if value="{{ useDefaultH1 }}" hint-placeholder-val="{{ true }}">Your electric bill is <span style="color:#0077A8">a subscription you never agreed to.</span></sc-if><sc-if value="{{ useCustomH1 }}" hint-placeholder-val="{{ false }}">{{ headline }}</sc-if></h1>
+      <div style="position:relative;height:14px;margin:2px 0 18px;max-width:420px" aria-hidden="true">
+        <span style="position:absolute;left:0;top:2px;width:10px;height:10px;border-radius:50%;background:#00A0DF"></span>
+        <span style="position:absolute;left:18px;right:0;top:6px;height:2px;background:#E3E7EB"></span>
+        <span style="position:absolute;left:18px;top:5px;height:4px;border-radius:2px;background:#00A0DF;width:calc(100% - 18px);animation:pu-drain 2.4s cubic-bezier(.4,0,.2,1) .5s forwards"></span>
+      </div>
+      <p style="font-size:18px;line-height:1.6;color:#111417;margin:0;max-width:46ch;text-wrap:pretty">See what solar costs on your roof — free, and no obligation. Takes 60 seconds.</p>
+      <div style="display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:18px">
+        <span style="display:flex;gap:7px;align-items:center;font-size:15px;color:#5B6670"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8.5l3.2 3.2L13 5" stroke="#0077A8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>$0 upfront cost</span>
+        <span style="display:flex;gap:7px;align-items:center;font-size:15px;color:#5B6670"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8.5l3.2 3.2L13 5" stroke="#0077A8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>Lower monthly bills</span>
+        <span style="display:flex;gap:7px;align-items:center;font-size:15px;color:#5B6670"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8.5l3.2 3.2L13 5" stroke="#0077A8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>Licensed installers</span>
+        <span style="display:flex;gap:7px;align-items:center;font-size:15px;color:#5B6670"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8.5l3.2 3.2L13 5" stroke="#0077A8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>25-year warranty</span>
+        <span style="display:flex;gap:7px;align-items:center;font-size:15px;color:#5B6670"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8.5l3.2 3.2L13 5" stroke="#0077A8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>No obligation quote</span>
+      </div>
+      <sc-if value="{{ isDesktopView }}" hint-placeholder-val="{{ false }}">
+        <div style="margin-top:24px">
+          <image-slot id="hero-install" shape="rounded" radius="12" style="width:100%;max-width:560px;height:220px" placeholder="Hero photo — recent Houston-area install, panels on a real roof"></image-slot>
+        </div>
+      </sc-if>
+    </div>
+
+    <div ref="{{ formCardRef }}" style="flex:1 1 340px;max-width:480px;position:sticky;top:16px;background:#F5F8FA;border:1px solid #E3E7EB;border-radius:12px;padding:20px 20px 18px;box-shadow:0 8px 24px rgba(17,20,23,.06)">
+      <div aria-live="polite" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">{{ liveMsg }}</div>
+      <div style="display:flex;justify-content:center;margin-bottom:10px">
+        <span style="font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:13px;letter-spacing:.08em;color:#5B6670;border:1px solid #E3E7EB;border-radius:4px;background:#FFFFFF;padding:3px 10px">FREE SOLAR QUOTE</span>
+      </div>
+      <sc-if value="{{ showWizard }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:4px">
+          <span style="font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:13px;color:#5B6670;white-space:nowrap">STEP {{ step }} OF 3 &middot; <span>{{ stepName }}</span></span>
+          <span style="position:relative;flex:1;height:10px" aria-hidden="true">
+            <span style="position:absolute;left:0;top:1px;width:8px;height:8px;border-radius:50%;background:#00A0DF"></span>
+            <span style="position:absolute;left:14px;right:0;top:4px;height:2px;background:#E3E7EB"></span>
+            <span style="position:absolute;left:14px;top:3px;height:4px;border-radius:2px;background:#00A0DF;max-width:calc(100% - 14px);transition:width .3s ease;width:{{ progressPct }}"></span>
+          </span>
+        </div>
+
+        <sc-if value="{{ isStep1 }}" hint-placeholder-val="{{ true }}">
+          <h2 style="font-family:'Archivo',sans-serif;font-weight:700;font-size:24px;line-height:1.2;letter-spacing:-0.01em;margin:12px 0 4px">Your electric bill</h2>
+          <p style="font-size:15px;color:#5B6670;margin:0 0 16px">Start with what you spend — no bills or documents needed.</p>
+          <p style="font-weight:600;font-size:15px;margin:0 0 8px">Average monthly electric bill</p>
+          <div ref="{{ billRef }}" style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px">
+            <sc-for list="{{ billOpts }}" as="o" hint-placeholder-count="5">
+              <button type="button" onClick="{{ o.pick }}" style="min-height:48px;border-radius:8px;font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:15px;cursor:pointer;color:#111417;border:1.5px solid {{ o.bc }};background:{{ o.bg }}">{{ o.label }}</button>
+            </sc-for>
+          </div>
+          <sc-if value="{{ errBill }}" hint-placeholder-val="{{ false }}"><p style="color:#B42318;font-size:15px;margin:6px 0 0">{{ errBill }}</p></sc-if>
+          <label for="pu-zip" style="display:block;font-weight:600;font-size:15px;margin:18px 0 6px">ZIP code</label>
+          <input id="pu-zip" ref="{{ zipRef }}" type="text" inputmode="numeric" value="{{ zip }}" onChange="{{ setZip }}" onBlur="{{ blurZip }}" autocomplete="postal-code" placeholder="77002" style="width:100%;box-sizing:border-box;min-height:48px;padding:12px 14px;border:1.5px solid #E3E7EB;border-radius:8px;font-family:'IBM Plex Mono',monospace;font-size:17px;color:#111417;background:#FFFFFF">
+          <sc-if value="{{ errZip }}" hint-placeholder-val="{{ false }}"><p style="color:#B42318;font-size:15px;margin:6px 0 0">{{ errZip }}</p></sc-if>
+          <p style="font-weight:600;font-size:15px;margin:18px 0 8px">Do you own this home?</p>
+          <div ref="{{ ownRef }}" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <sc-for list="{{ ownOpts }}" as="o" hint-placeholder-count="2">
+              <button type="button" onClick="{{ o.pick }}" style="min-height:52px;border-radius:8px;font-weight:600;font-size:17px;cursor:pointer;color:#111417;border:1.5px solid {{ o.bc }};background:{{ o.bg }}">{{ o.label }}</button>
+            </sc-for>
+          </div>
+          <sc-if value="{{ errHomeowner }}" hint-placeholder-val="{{ false }}"><p style="color:#B42318;font-size:15px;margin:6px 0 0">{{ errHomeowner }}</p></sc-if>
+          <p style="font-size:13px;color:#5B6670;margin:8px 0 0">Homeowners qualify for the $0-upfront program.</p>
+          <button type="button" onClick="{{ continue1 }}" style="width:100%;min-height:56px;margin-top:18px;background:#00A0DF;color:#FFFFFF;border:none;border-radius:8px;font-weight:600;font-size:17px;cursor:pointer">Continue</button>
+          <p style="font-size:13px;color:#5B6670;margin:10px 0 0;text-align:center">60-second check. No obligation. Your info stays private.</p>
+        </sc-if>
+
+        <sc-if value="{{ isStep2 }}" hint-placeholder-val="{{ false }}">
+          <h2 ref="{{ h2Ref }}" tabindex="-1" style="font-family:'Archivo',sans-serif;font-weight:700;font-size:24px;line-height:1.2;letter-spacing:-0.01em;margin:12px 0 4px;outline:none">Your roof</h2>
+          <p style="font-size:15px;color:#5B6670;margin:0 0 16px">Three taps and we can size your system.</p>
+          <p style="font-weight:600;font-size:15px;margin:0 0 8px">How shaded is your roof?</p>
+          <div ref="{{ shadeRef }}" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+            <sc-for list="{{ shadeOpts }}" as="o" hint-placeholder-count="3">
+              <button type="button" onClick="{{ o.pick }}" style="min-height:64px;border-radius:8px;font-weight:600;font-size:15px;cursor:pointer;color:#111417;border:1.5px solid {{ o.bc }};background:{{ o.bg }};padding:8px 4px">{{ o.label }}</button>
+            </sc-for>
+          </div>
+          <sc-if value="{{ errShade }}" hint-placeholder-val="{{ false }}"><p style="color:#B42318;font-size:15px;margin:6px 0 0">{{ errShade }}</p></sc-if>
+          <p style="font-weight:600;font-size:15px;margin:18px 0 8px">Roof age</p>
+          <div ref="{{ roofRef }}" style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px">
+            <sc-for list="{{ roofOpts }}" as="o" hint-placeholder-count="4">
+              <button type="button" onClick="{{ o.pick }}" style="min-height:48px;border-radius:8px;font-weight:600;font-size:15px;cursor:pointer;color:#111417;border:1.5px solid {{ o.bc }};background:{{ o.bg }}">{{ o.label }}</button>
+            </sc-for>
+          </div>
+          <sc-if value="{{ errRoofAge }}" hint-placeholder-val="{{ false }}"><p style="color:#B42318;font-size:15px;margin:6px 0 0">{{ errRoofAge }}</p></sc-if>
+          <p style="font-weight:600;font-size:15px;margin:18px 0 8px">When are you looking to move forward?</p>
+          <div ref="{{ timeRef }}" style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px">
+            <sc-for list="{{ timeOpts }}" as="o" hint-placeholder-count="4">
+              <button type="button" onClick="{{ o.pick }}" style="min-height:48px;border-radius:8px;font-weight:600;font-size:15px;cursor:pointer;color:#111417;border:1.5px solid {{ o.bc }};background:{{ o.bg }}">{{ o.label }}</button>
+            </sc-for>
+          </div>
+          <sc-if value="{{ errTimeline }}" hint-placeholder-val="{{ false }}"><p style="color:#B42318;font-size:15px;margin:6px 0 0">{{ errTimeline }}</p></sc-if>
+          <div style="display:flex;align-items:center;gap:16px;margin-top:18px">
+            <button type="button" onClick="{{ back1 }}" style="background:none;border:none;color:#5B6670;font-weight:500;font-size:15px;cursor:pointer;padding:12px 4px;text-decoration:underline;flex-shrink:0">&#8592; Back</button>
+            <button type="button" onClick="{{ continue2 }}" style="flex:1;min-height:56px;background:#00A0DF;color:#FFFFFF;border:none;border-radius:8px;font-weight:600;font-size:17px;cursor:pointer">Continue</button>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isStep3 }}" hint-placeholder-val="{{ false }}">
+          <h2 ref="{{ h3Ref }}" tabindex="-1" style="font-family:'Archivo',sans-serif;font-weight:700;font-size:24px;line-height:1.2;letter-spacing:-0.01em;margin:12px 0 4px;outline:none">Where do we send it?</h2>
+          <p style="font-size:15px;color:#5B6670;margin:0 0 16px">Your estimate is free, and there is no obligation.</p>
+          <label for="pu-name" style="display:block;font-weight:600;font-size:15px;margin:0 0 6px">Full name</label>
+          <input id="pu-name" ref="{{ nameRef }}" type="text" value="{{ name }}" onChange="{{ setName }}" onBlur="{{ blurName }}" autocomplete="name" placeholder="Jane Rodriguez" style="width:100%;box-sizing:border-box;min-height:48px;padding:12px 14px;border:1.5px solid #E3E7EB;border-radius:8px;font-size:17px;color:#111417;background:#FFFFFF">
+          <sc-if value="{{ errName }}" hint-placeholder-val="{{ false }}"><p style="color:#B42318;font-size:15px;margin:6px 0 0">{{ errName }}</p></sc-if>
+          <label for="pu-phone" style="display:block;font-weight:600;font-size:15px;margin:14px 0 6px">Mobile phone</label>
+          <input id="pu-phone" ref="{{ phoneRef }}" type="tel" inputmode="tel" value="{{ phone }}" onChange="{{ setPhone }}" onBlur="{{ blurPhone }}" autocomplete="tel" placeholder="(832) 884-7302" style="width:100%;box-sizing:border-box;min-height:48px;padding:12px 14px;border:1.5px solid #E3E7EB;border-radius:8px;font-family:'IBM Plex Mono',monospace;font-size:17px;color:#111417;background:#FFFFFF">
+          <sc-if value="{{ errPhone }}" hint-placeholder-val="{{ false }}"><p style="color:#B42318;font-size:15px;margin:6px 0 0">{{ errPhone }}</p></sc-if>
+          <label for="pu-email" style="display:block;font-weight:600;font-size:15px;margin:14px 0 6px">Email</label>
+          <input id="pu-email" ref="{{ emailRef }}" type="email" inputmode="email" value="{{ email }}" onChange="{{ setEmail }}" onBlur="{{ blurEmail }}" autocomplete="email" placeholder="jane@example.com" style="width:100%;box-sizing:border-box;min-height:48px;padding:12px 14px;border:1.5px solid #E3E7EB;border-radius:8px;font-size:17px;color:#111417;background:#FFFFFF">
+          <sc-if value="{{ errEmail }}" hint-placeholder-val="{{ false }}"><p style="color:#B42318;font-size:15px;margin:6px 0 0">{{ errEmail }}</p></sc-if>
+          <label ref="{{ consentRef }}" style="display:flex;gap:12px;align-items:flex-start;padding:14px;border:1.5px solid {{ consentBorder }};border-radius:8px;cursor:pointer;background:#FFFFFF;margin:16px 0 0">
+            <input type="checkbox" checked="{{ consent }}" onChange="{{ toggleConsent }}" style="width:22px;height:22px;margin:1px 0 0;accent-color:#00A0DF;flex-shrink:0">
+            <span style="font-size:15px;line-height:1.5;color:#5B6670">By checking this box, I expressly consent to receive marketing calls, text messages, and emails from <strong style="color:#111417">{{ companyName }}</strong> and its partners at the phone number and email I provided — including messages sent using an autodialer or prerecorded voice. I understand consent is not a condition of any purchase, and message &amp; data rates may apply. Reply STOP to opt out at any time.</span>
+          </label>
+          <sc-if value="{{ errConsent }}" hint-placeholder-val="{{ false }}"><p style="color:#B42318;font-size:15px;margin:6px 0 0">{{ errConsent }}</p></sc-if>
+          <sc-if value="{{ errSubmit }}" hint-placeholder-val="{{ false }}"><p style="color:#B42318;font-size:15px;margin:12px 0 0">{{ errSubmit }}</p></sc-if>
+          <div style="display:flex;align-items:center;gap:16px;margin-top:18px">
+            <button type="button" onClick="{{ back2 }}" style="background:none;border:none;color:#5B6670;font-weight:500;font-size:15px;cursor:pointer;padding:12px 4px;text-decoration:underline;flex-shrink:0">&#8592; Back</button>
+            <button type="button" onClick="{{ submit }}" style="flex:1;min-height:56px;background:#00A0DF;color:#FFFFFF;border:none;border-radius:8px;font-weight:600;font-size:17px;cursor:pointer">{{ submitLabel }}</button>
+          </div>
+          <p style="display:flex;gap:7px;align-items:center;justify-content:center;font-size:13px;color:#5B6670;margin:10px 0 0"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="1.5" stroke="#5B6670" stroke-width="1.8"></rect><path d="M5.5 7V5.5a2.5 2.5 0 015 0V7" stroke="#5B6670" stroke-width="1.8"></path></svg>Your info stays private — used only for your solar consult.</p>
+        </sc-if>
+      </sc-if>
+
+      <sc-if value="{{ dqRenter }}" hint-placeholder-val="{{ false }}">
+        <h2 style="font-family:'Archivo',sans-serif;font-weight:700;font-size:24px;line-height:1.2;margin:12px 0 10px">We need the property owner</h2>
+        <p style="font-size:15px;color:#5B6670;margin:0 0 16px">Solar installation has to be approved and signed by whoever owns the home. If you rent, ask your landlord to start a request — or get in touch about community solar, which works without owning the roof.</p>
+        <button type="button" onClick="{{ startOver }}" style="background:none;border:none;color:#0077A8;font-weight:600;font-size:15px;cursor:pointer;padding:4px 0;text-decoration:underline">&#8592; Start over</button>
+      </sc-if>
+      <sc-if value="{{ dqCoop }}" hint-placeholder-val="{{ false }}">
+        <h2 style="font-family:'Archivo',sans-serif;font-weight:700;font-size:24px;line-height:1.2;margin:12px 0 10px">Not available in your area yet</h2>
+        <p style="font-size:15px;color:#5B6670;margin:0 0 16px">Your ZIP code sits in an electric cooperative territory where we cannot currently install. This changes as agreements are signed, so it is worth checking back.</p>
+        <button type="button" onClick="{{ startOver }}" style="background:none;border:none;color:#0077A8;font-weight:600;font-size:15px;cursor:pointer;padding:4px 0;text-decoration:underline">&#8592; Start over</button>
+      </sc-if>
+      <sc-if value="{{ dqOut }}" hint-placeholder-val="{{ false }}">
+        <h2 style="font-family:'Archivo',sans-serif;font-weight:700;font-size:24px;line-height:1.2;margin:12px 0 10px">Outside our service area</h2>
+        <p style="font-size:15px;color:#5B6670;margin:0 0 16px">We currently install around Houston, and your ZIP code falls outside that. We are expanding, so this may change.</p>
+        <button type="button" onClick="{{ startOver }}" style="background:none;border:none;color:#0077A8;font-weight:600;font-size:15px;cursor:pointer;padding:4px 0;text-decoration:underline">&#8592; Start over</button>
+      </sc-if>
+
+      <sc-if value="{{ done }}" hint-placeholder-val="{{ false }}">
+        <h2 ref="{{ successRef }}" tabindex="-1" style="font-family:'Archivo',sans-serif;font-weight:800;font-size:28px;line-height:1.15;letter-spacing:-0.01em;margin:8px 0 6px;outline:none">Request received</h2>
+        <p style="font-size:17px;color:#111417;margin:0 0 16px">Thanks {{ firstName }} — your solar quote request is in.</p>
+        <ol style="margin:0;padding:0 0 0 2px;list-style:none;display:grid;gap:12px">
+          <li style="display:flex;gap:12px"><span style="font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:13px;color:#0077A8;padding-top:2px">01</span><span style="font-size:15px;line-height:1.5">We review your roof, shade, and local rates</span></li>
+          <li style="display:flex;gap:12px"><span style="font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:13px;color:#0077A8;padding-top:2px">02</span><span style="font-size:15px;line-height:1.5">A local solar advisor calls or texts within 1 business day</span></li>
+          <li style="display:flex;gap:12px"><span style="font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:13px;color:#0077A8;padding-top:2px">03</span><span style="font-size:15px;line-height:1.5">You get a custom savings estimate — free, no obligation</span></li>
+        </ol>
+        <div style="border-top:1px solid #E3E7EB;margin-top:18px;padding-top:16px;display:grid;gap:10px">
+          <p style="font-weight:600;font-size:15px;margin:0">Want to skip the wait?</p>
+          <a href="tel:+13469168197" style="display:flex;align-items:center;justify-content:center;min-height:52px;background:#00A0DF;color:#FFFFFF;border-radius:8px;font-weight:600;font-size:17px;text-decoration:none">Call us now</a>
+          <button type="button" onClick="{{ startNew }}" style="background:none;border:none;color:#5B6670;font-weight:500;font-size:15px;cursor:pointer;padding:6px 0 0;text-decoration:underline">Start a new request</button>
+        </div>
+      </sc-if>
+
+      <p style="font-size:13px;color:#5B6670;margin:16px 0 0;border-top:1px solid #E3E7EB;padding-top:12px;text-align:center">Not affiliated with or endorsed by CenterPoint Energy, Oncor, AEP Texas, Texas-New Mexico Power.</p>
+    </div>
+  </div>
+</section>
+
+<section data-screen-label="Proof strip" style="background:#F5F8FA;border-top:1px solid #E3E7EB;border-bottom:1px solid #E3E7EB">
+  <div style="max-width:1120px;margin:0 auto;padding:24px 20px 26px">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px">
+      <div style="background:#FFFFFF;border:1px solid #E3E7EB;border-radius:10px;padding:16px 14px;display:grid;gap:3px;align-content:start">
+        <span style="font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:18px;color:#0077A8">TECL #34521</span>
+        <span style="font-size:13px;color:#5B6670">Licensed Texas installers</span>
+      </div>
+      <div style="background:#FFFFFF;border:1px solid #E3E7EB;border-radius:10px;padding:16px 14px;display:grid;gap:3px;align-content:start">
+        <span style="font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:18px;color:#0077A8">2,400+</span>
+        <span style="font-size:13px;color:#5B6670">Texas installs since 2016</span>
+      </div>
+      <div style="background:#FFFFFF;border:1px solid #E3E7EB;border-radius:10px;padding:16px 14px;display:grid;gap:3px;align-content:start">
+        <span style="font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:18px;color:#0077A8">$0</span>
+        <span style="font-size:13px;color:#5B6670">Upfront cost — no loan, no debt</span>
+      </div>
+      <div style="background:#FFFFFF;border:1px solid #E3E7EB;border-radius:10px;padding:16px 14px;display:grid;gap:3px;align-content:start">
+        <span style="font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:18px;color:#0077A8">25 YRS</span>
+        <span style="font-size:13px;color:#5B6670">Performance warranty</span>
+      </div>
+      <div style="background:#FFFFFF;border:1px solid #E3E7EB;border-radius:10px;padding:16px 14px;display:grid;gap:3px;align-content:start">
+        <span style="font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:18px;color:#0077A8">MONTH 1</span>
+        <span style="font-size:13px;color:#5B6670">Lower bill from day one</span>
+      </div>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px 24px;align-items:center;justify-content:center;margin-top:14px">
+      <span style="display:flex;gap:6px;align-items:center;font-weight:600;font-size:13px;color:#5B6670;letter-spacing:.04em"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5l2 4.1 4.5.6-3.3 3.2.8 4.5L8 11.8l-4 2.1.8-4.5L1.5 6.2l4.5-.6z" stroke="#5B6670" stroke-width="1.5" stroke-linejoin="round"></path></svg>NABCEP CERTIFIED</span>
+      <span style="display:flex;gap:6px;align-items:center;font-weight:600;font-size:13px;color:#5B6670;letter-spacing:.04em"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 1.5l5.5 2v4c0 3.2-2.3 5.6-5.5 7-3.2-1.4-5.5-3.8-5.5-7v-4z" stroke="#5B6670" stroke-width="1.5" stroke-linejoin="round"></path></svg>BBB A+</span>
+      <span style="display:flex;gap:6px;align-items:center;font-weight:600;font-size:13px;color:#5B6670;letter-spacing:.04em"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="1.5" stroke="#5B6670" stroke-width="1.5"></rect><path d="M2 7.5h12M6.5 3v10" stroke="#5B6670" stroke-width="1.5"></path></svg>TIER-1 PANEL PARTNER</span>
+      <span style="display:flex;gap:6px;align-items:center;font-weight:600;font-size:13px;color:#5B6670;letter-spacing:.04em"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8.5 1.5L4 9h3.5L7 14.5 12 7H8.5z" stroke="#5B6670" stroke-width="1.5" stroke-linejoin="round"></path></svg>BATTERY PROGRAM</span>
+      <span style="display:flex;gap:6px;align-items:center;font-weight:600;font-size:13px;color:#5B6670;letter-spacing:.04em"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 14s5-3.6 5-7.5a5 5 0 00-10 0C3 10.4 8 14 8 14z" stroke="#5B6670" stroke-width="1.5"></path><circle cx="8" cy="6.5" r="1.8" stroke="#5B6670" stroke-width="1.5"></circle></svg>TEXAS-BASED</span>
+      <span style="display:flex;gap:6px;align-items:center;font-weight:600;font-size:13px;color:#5B6670;letter-spacing:.04em"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="1.5" stroke="#5B6670" stroke-width="1.5"></rect><path d="M5.5 7V5.5a2.5 2.5 0 015 0V7" stroke="#5B6670" stroke-width="1.5"></path></svg>YOUR INFO STAYS PRIVATE</span>
+    </div>
+  </div>
+</section>
+
+<section data-screen-label="Three reasons" style="background:#FFFFFF">
+  <div style="max-width:1120px;margin:0 auto;padding:clamp(48px,7vw,72px) 20px">
+    <div style="display:grid;gap:10px;margin:0 0 32px;justify-items:start">
+      <span style="font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:13px;letter-spacing:.08em;color:#0077A8">THE MATH</span>
+      <h2 style="font-family:'Archivo',sans-serif;font-weight:800;font-size:clamp(26px,4vw,34px);line-height:1.1;letter-spacing:-0.02em;margin:0;text-wrap:pretty">Why this is worth <span style="color:#0077A8">60 seconds</span></h2>
+      <span style="width:56px;height:4px;border-radius:2px;background:#00A0DF" aria-hidden="true"></span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:32px 40px">
+      <div style="display:grid;gap:10px;align-content:start">
+        <image-slot id="reason-bill" shape="rounded" radius="10" style="width:100%;height:150px" placeholder="Electric bill or meter close-up"></image-slot>
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M17 8a8 8 0 10.9 8" stroke="#111417" stroke-width="2" stroke-linecap="round"></path><path d="M18 3v5h-5" stroke="#111417" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        <h3 style="font-family:'Archivo',sans-serif;font-weight:700;font-size:20px;letter-spacing:-0.01em;margin:0">You&rsquo;re already paying for it.</h3>
+        <p style="font-size:17px;color:#5B6670;margin:0">The average Houston-area homeowner pays <span style="font-family:'IBM Plex Mono',monospace;font-weight:600;color:#B07E13">$2,100&ndash;$3,600</span> a year to rent power. Solar redirects that payment into an asset you own.</p>
+      </div>
+      <div style="display:grid;gap:10px;align-content:start">
+        <image-slot id="reason-payments" shape="rounded" radius="10" style="width:100%;height:150px" placeholder="Homeowner at kitchen table / payoff moment"></image-slot>
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2" stroke="#111417" stroke-width="2"></rect><path d="M3 10h18M8 3v4M16 3v4" stroke="#111417" stroke-width="2" stroke-linecap="round"></path><path d="M8.5 15.5l2.3 2.3 4.7-4.7" stroke="#111417" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        <h3 style="font-family:'Archivo',sans-serif;font-weight:700;font-size:20px;letter-spacing:-0.01em;margin:0">The payments end. The bill doesn&rsquo;t.</h3>
+        <p style="font-size:17px;color:#5B6670;margin:0">Financed solar has a final payment. Your utility bill has none.</p>
+      </div>
+      <div style="display:grid;gap:10px;align-content:start">
+        <image-slot id="reason-credit" shape="rounded" radius="10" style="width:100%;height:150px" placeholder="Sunlit Texas rooftop with panels"></image-slot>
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="#111417" stroke-width="2"></circle><path d="M12 7v5l3.5 2.5" stroke="#111417" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        <h3 style="font-family:'Archivo',sans-serif;font-weight:700;font-size:20px;letter-spacing:-0.01em;margin:0">The federal credit is time-limited.</h3>
+        <p style="font-size:17px;color:#5B6670;margin:0">Homeowners can currently claim a 30% federal tax credit, plus utility-level incentives. It steps down.</p>
+      </div>
+    </div>
+    <p style="font-size:13px;font-style:italic;color:#5B6670;margin:28px 0 0">Savings vary by roof, usage, and utility rate.</p>
+    <div style="margin-top:32px;display:grid;gap:10px;justify-items:start">
+      <button type="button" onClick="{{ scrollToForm }}" style="min-height:52px;padding:0 28px;background:#00A0DF;color:#FFFFFF;border:none;border-radius:8px;font-weight:600;font-size:17px;cursor:pointer">Run my 60-second check</button>
+      <p style="font-size:13px;color:#5B6670;margin:0">Free design. $0 down. No obligation.</p>
+    </div>
+  </div>
+</section>
+
+<section data-screen-label="What happens next" style="background:#F5F8FA;border-top:1px solid #E3E7EB;border-bottom:1px solid #E3E7EB">
+  <div style="max-width:1120px;margin:0 auto;padding:clamp(48px,7vw,72px) 20px">
+    <div style="display:grid;gap:10px;margin:0 0 32px;justify-items:start">
+      <span style="font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:13px;letter-spacing:.08em;color:#0077A8">THE PROCESS</span>
+      <h2 style="font-family:'Archivo',sans-serif;font-weight:800;font-size:clamp(26px,4vw,34px);line-height:1.1;letter-spacing:-0.02em;margin:0;text-wrap:pretty">What <span style="color:#0077A8">actually happens</span> next</h2>
+      <span style="width:56px;height:4px;border-radius:2px;background:#00A0DF" aria-hidden="true"></span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:28px 40px">
+      <div style="display:grid;gap:10px;align-content:start;border-top:2px solid #00A0DF;padding-top:16px">
+        <span style="font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:13px;color:#0077A8">STEP 01</span>
+        <h3 style="font-family:'Archivo',sans-serif;font-weight:700;font-size:20px;letter-spacing:-0.01em;margin:0">You submit</h3>
+        <p style="font-size:17px;color:#5B6670;margin:0">Takes 60 seconds. No documents needed.</p>
+      </div>
+      <div style="display:grid;gap:10px;align-content:start;border-top:2px solid #00A0DF;padding-top:16px">
+        <span style="font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:13px;color:#0077A8">STEP 02</span>
+        <h3 style="font-family:'Archivo',sans-serif;font-weight:700;font-size:20px;letter-spacing:-0.01em;margin:0">We design your system</h3>
+        <p style="font-size:17px;color:#5B6670;margin:0">A real engineer maps your roof from satellite imagery and sizes the array to your bill. Free, no visit required.</p>
+      </div>
+      <div style="display:grid;gap:10px;align-content:start;border-top:2px solid #00A0DF;padding-top:16px">
+        <span style="font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:13px;color:#0077A8">STEP 03</span>
+        <h3 style="font-family:'Archivo',sans-serif;font-weight:700;font-size:20px;letter-spacing:-0.01em;margin:0">You get the numbers</h3>
+        <p style="font-size:17px;color:#5B6670;margin:0">Cost, monthly payment, projected savings, and payback period. Then you decide. No pressure, no obligation.</p>
+      </div>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:28px 48px;align-items:center;margin-top:40px">
+      <div style="flex:1 1 320px;display:grid;gap:14px;justify-items:start">
+        <p style="font-family:'Archivo',sans-serif;font-weight:700;font-size:20px;letter-spacing:-0.01em;margin:0;max-width:60ch">We call once. If it&rsquo;s not for you, tell us and we&rsquo;re done.</p>
+        <button type="button" onClick="{{ scrollToForm }}" style="min-height:52px;padding:0 28px;background:#00A0DF;color:#FFFFFF;border:none;border-radius:8px;font-weight:600;font-size:17px;cursor:pointer">Get my free solar design</button>
+        <p style="font-size:13px;color:#5B6670;margin:0">60 seconds. No documents. No obligation.</p>
+      </div>
+      <div style="flex:1 1 300px;max-width:440px">
+        <image-slot id="design-preview" shape="rounded" radius="12" style="width:100%;height:240px" placeholder="Sample system design — satellite roof view with panel layout"></image-slot>
+        <p style="font-size:13px;color:#5B6670;margin:8px 0 0">A real design from step 02 — panels placed on the actual roof.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section data-screen-label="Social proof" style="background:#FFFFFF">
+  <div style="max-width:1120px;margin:0 auto;padding:clamp(48px,7vw,72px) 20px">
+    <div style="display:grid;gap:10px;margin:0 0 32px;justify-items:start">
+      <span style="font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:13px;letter-spacing:.08em;color:#0077A8">PROOF</span>
+      <h2 style="font-family:'Archivo',sans-serif;font-weight:800;font-size:clamp(26px,4vw,34px);line-height:1.1;letter-spacing:-0.02em;margin:0;text-wrap:pretty">From homeowners <span style="color:#0077A8">we&rsquo;ve built for</span></h2>
+      <span style="width:56px;height:4px;border-radius:2px;background:#00A0DF" aria-hidden="true"></span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px">
+      <figure style="margin:0;border:1px solid #E3E7EB;border-radius:12px;padding:24px;display:grid;gap:12px;align-content:start">
+        <span style="font-family:'Archivo',sans-serif;font-weight:800;font-size:34px;line-height:.5;color:#00A0DF" aria-hidden="true">&ldquo;</span>
+        <blockquote style="margin:0;font-size:17px;line-height:1.6">Our July bill went from <span style="font-family:'IBM Plex Mono',monospace;font-weight:600">$340</span> to <span style="font-family:'IBM Plex Mono',monospace;font-weight:600">$61</span>. The design they sent matched what the system actually produces.</blockquote>
+        <figcaption style="display:flex;align-items:center;gap:10px;font-size:15px;color:#5B6670"><image-slot id="avatar-marisol" shape="circle" style="width:56px;height:56px;flex-shrink:0" placeholder=""></image-slot><span>Marisol R., Katy, TX &middot; <span style="font-family:'IBM Plex Mono',monospace">11.2 kW</span></span></figcaption>
+      </figure>
+      <figure style="margin:0;border:1px solid #E3E7EB;border-radius:12px;padding:24px;display:grid;gap:12px;align-content:start">
+        <span style="font-family:'Archivo',sans-serif;font-weight:800;font-size:34px;line-height:.5;color:#00A0DF" aria-hidden="true">&ldquo;</span>
+        <blockquote style="margin:0;font-size:17px;line-height:1.6">No sales guy in my living room. They mapped the roof from satellite and emailed the numbers two days later.</blockquote>
+        <figcaption style="display:flex;align-items:center;gap:10px;font-size:15px;color:#5B6670"><image-slot id="avatar-devon" shape="circle" style="width:56px;height:56px;flex-shrink:0" placeholder=""></image-slot><span>Devon T., Cypress, TX &middot; <span style="font-family:'IBM Plex Mono',monospace">8.4 kW</span></span></figcaption>
+      </figure>
+      <figure style="margin:0;border:1px solid #E3E7EB;border-radius:12px;padding:24px;display:grid;gap:12px;align-content:start">
+        <span style="font-family:'Archivo',sans-serif;font-weight:800;font-size:34px;line-height:.5;color:#00A0DF" aria-hidden="true">&ldquo;</span>
+        <blockquote style="margin:0;font-size:17px;line-height:1.6">They told us our oak shaded too much of the back roof and sized the system smaller instead of overselling it.</blockquote>
+        <figcaption style="display:flex;align-items:center;gap:10px;font-size:15px;color:#5B6670"><image-slot id="avatar-rita" shape="circle" style="width:56px;height:56px;flex-shrink:0" placeholder=""></image-slot><span>Rita M., Conroe, TX &middot; <span style="font-family:'IBM Plex Mono',monospace">6.0 kW</span></span></figcaption>
+      </figure>
+    </div>
+    <div style="margin-top:32px;display:grid;gap:10px;justify-items:center;text-align:center">
+      <button type="button" onClick="{{ scrollToForm }}" style="min-height:52px;padding:0 28px;background:#00A0DF;color:#FFFFFF;border:none;border-radius:8px;font-weight:600;font-size:17px;cursor:pointer">See what my roof can do</button>
+      <p style="font-size:13px;color:#5B6670;margin:0">Free design. One call. You decide.</p>
+    </div>
+  </div>
+</section>
+
+<section data-screen-label="No loan" style="background:#111417">
+  <div style="max-width:1120px;margin:0 auto;padding:clamp(44px,6vw,64px) 20px;display:flex;flex-wrap:wrap;gap:28px 48px;align-items:center;justify-content:space-between">
+    <div style="flex:1 1 380px;display:grid;gap:14px">
+      <h2 style="font-family:'Archivo',sans-serif;font-weight:800;font-size:clamp(26px,4vw,34px);line-height:1.1;letter-spacing:-0.02em;margin:0;color:#FFFFFF;text-wrap:pretty">No loan. No financing. <span style="color:#00A0DF">No debt on your home.</span></h2>
+      <p style="font-size:18px;color:#C7CDD2;margin:0;max-width:52ch">You owe nothing — just pay less for power.</p>
+      <div style="background:#F5F8FA;border-radius:12px;padding:6px;max-width:480px">
+        <image-slot id="battery-program" shape="rounded" radius="8" style="width:100%;height:200px;display:block" placeholder="Battery program — home battery or install crew photo"></image-slot>
+      </div>
+    </div>
+    <div style="flex:1 1 300px;display:grid;gap:12px">
+      <span style="display:flex;gap:10px;align-items:center;font-size:17px;font-weight:500;color:#FFFFFF"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8.5l3.2 3.2L13 5" stroke="#00A0DF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>Savings from day one</span>
+      <span style="display:flex;gap:10px;align-items:center;font-size:17px;font-weight:500;color:#FFFFFF"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8.5l3.2 3.2L13 5" stroke="#00A0DF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>Lower bill month one</span>
+      <span style="display:flex;gap:10px;align-items:center;font-size:17px;font-weight:500;color:#FFFFFF"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8.5l3.2 3.2L13 5" stroke="#00A0DF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>Pay less than you do now</span>
+      <button type="button" onClick="{{ scrollToForm }}" style="min-height:52px;padding:0 28px;margin-top:6px;background:#00A0DF;color:#FFFFFF;border:none;border-radius:8px;font-weight:600;font-size:17px;cursor:pointer;justify-self:start">Run my 60-second check</button>
+    </div>
+  </div>
+</section>
+
+<section data-screen-label="FAQ" style="background:#F5F8FA;border-top:1px solid #E3E7EB;border-bottom:1px solid #E3E7EB">
+  <div style="max-width:760px;margin:0 auto;padding:clamp(48px,7vw,72px) 20px">
+    <div style="display:grid;gap:10px;margin:0 0 20px;justify-items:start">
+      <span style="font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:13px;letter-spacing:.08em;color:#0077A8">FAQ</span>
+      <h2 style="font-family:'Archivo',sans-serif;font-weight:800;font-size:clamp(26px,4vw,34px);line-height:1.1;letter-spacing:-0.02em;margin:0">Straight <span style="color:#0077A8">answers</span></h2>
+      <span style="width:56px;height:4px;border-radius:2px;background:#00A0DF" aria-hidden="true"></span>
+    </div>
+    <details open="{{ true }}" style="border-bottom:1px solid #E3E7EB">
+      <summary style="cursor:pointer;font-weight:600;font-size:17px;padding:16px 0;list-style:none;display:flex;justify-content:space-between;gap:12px;align-items:center">What does it cost me up front?<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" style="flex-shrink:0;transition:transform .2s"><path d="M3 6l5 5 5-5" stroke="#0077A8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg></summary>
+      <p style="margin:0 0 18px;color:#5B6670;font-size:17px">Nothing — $0 down financing is available for qualified homeowners.</p>
+    </details>
+    <details style="border-bottom:1px solid #E3E7EB">
+      <summary style="cursor:pointer;font-weight:600;font-size:17px;padding:16px 0;list-style:none;display:flex;justify-content:space-between;gap:12px;align-items:center">Will I get bombarded with calls?<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" style="flex-shrink:0;transition:transform .2s"><path d="M3 6l5 5 5-5" stroke="#0077A8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg></summary>
+      <p style="margin:0 0 18px;color:#5B6670;font-size:17px">No. One call, from a real person, at the time you choose.</p>
+    </details>
+    <details style="border-bottom:1px solid #E3E7EB">
+      <summary style="cursor:pointer;font-weight:600;font-size:17px;padding:16px 0;list-style:none;display:flex;justify-content:space-between;gap:12px;align-items:center">What if my roof isn&rsquo;t right for solar?<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" style="flex-shrink:0;transition:transform .2s"><path d="M3 6l5 5 5-5" stroke="#0077A8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg></summary>
+      <p style="margin:0 0 18px;color:#5B6670;font-size:17px">We&rsquo;ll tell you. About 1 in 5 homes we design turn out not to be a fit — you&rsquo;ll get a straight answer either way.</p>
+    </details>
+    <details style="border-bottom:1px solid #E3E7EB">
+      <summary style="cursor:pointer;font-weight:600;font-size:17px;padding:16px 0;list-style:none;display:flex;justify-content:space-between;gap:12px;align-items:center">Do panels work during an outage?<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" style="flex-shrink:0;transition:transform .2s"><path d="M3 6l5 5 5-5" stroke="#0077A8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg></summary>
+      <p style="margin:0 0 18px;color:#5B6670;font-size:17px">Grid-tied systems shut off for lineworker safety. With a battery, essential circuits stay on.</p>
+    </details>
+    <details style="border-bottom:1px solid #E3E7EB">
+      <summary style="cursor:pointer;font-weight:600;font-size:17px;padding:16px 0;list-style:none;display:flex;justify-content:space-between;gap:12px;align-items:center">How long do they last?<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" style="flex-shrink:0;transition:transform .2s"><path d="M3 6l5 5 5-5" stroke="#0077A8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg></summary>
+      <p style="margin:0 0 18px;color:#5B6670;font-size:17px">25-year performance warranty, typically producing 30+ years.</p>
+    </details>
+  </div>
+</section>
+
+<section data-screen-label="Final CTA" style="background:#FFFFFF">
+  <div style="max-width:640px;margin:0 auto;padding:clamp(48px,7vw,80px) 20px;text-align:center">
+    <image-slot id="install-photo" shape="rounded" radius="12" style="width:100%;height:280px;margin-bottom:28px" placeholder="Completed install — crew or finished roof photo"></image-slot>
+    <h2 style="font-family:'Archivo',sans-serif;font-weight:800;font-size:clamp(26px,4vw,34px);line-height:1.1;letter-spacing:-0.02em;margin:0 0 20px;text-wrap:pretty">See what solar costs <span style="color:#0077A8">on your roof.</span></h2>
+    <button type="button" onClick="{{ scrollToForm }}" style="width:100%;max-width:400px;min-height:56px;background:#00A0DF;color:#FFFFFF;border:none;border-radius:8px;font-weight:600;font-size:17px;cursor:pointer">Get my free estimate</button>
+    <p style="font-size:15px;color:#5B6670;margin:12px 0 0">60 seconds. No documents. No obligation.</p>
+  </div>
+</section>
+
+<footer style="background:#111417;color:#9AA3AB">
+  <div style="max-width:1120px;margin:0 auto;padding:32px 20px;display:flex;flex-wrap:wrap;gap:20px 40px;align-items:flex-start;justify-content:space-between">
+    <div style="display:grid;gap:8px">
+      <div style="display:flex;align-items:center;gap:9px">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="4.5" fill="#5B6670"></circle><g stroke="#5B6670" stroke-width="2" stroke-linecap="round"><path d="M12 2v3"></path><path d="M12 19v3"></path><path d="M2 12h3"></path><path d="M19 12h3"></path><path d="M4.9 4.9l2.1 2.1"></path><path d="M17 17l2.1 2.1"></path><path d="M19.1 4.9L17 7"></path><path d="M7 17l-2.1 2.1"></path></g></svg>
+        <span style="font-family:'Archivo',sans-serif;font-weight:800;font-size:15px;letter-spacing:-0.01em;text-transform:uppercase;color:#FFFFFF">Powerless Utility</span>
+      </div>
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:13px">TECL #34521 &middot; Licensed Texas Electrical Contractor</span>
+      <a href="tel:+13469168197" style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:#C7CDD2">(346) 916-8197</a>
+      <a href="mailto:info@powerlessutility.com" style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:#C7CDD2">info@powerlessutility.com</a>
+      <span style="font-size:13px;max-width:52ch">Not affiliated with or endorsed by CenterPoint Energy, Oncor, AEP Texas, Texas-New Mexico Power.</span>
+    </div>
+    <div style="display:flex;gap:20px;font-size:13px;align-items:center">
+      <a href="/privacy" target="_blank" rel="noopener" style="color:#C7CDD2">Privacy Policy</a>
+      <a href="/terms" target="_blank" rel="noopener" style="color:#C7CDD2">Terms</a>
+      <span>&copy; 2026 Powerless Utility</span>
+    </div>
+  </div>
+</footer>
+
+<sc-if value="{{ showSticky }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed;left:0;right:0;bottom:0;z-index:50;padding:10px 16px calc(10px + env(safe-area-inset-bottom));background:rgba(255,255,255,.96);border-top:1px solid #E3E7EB;backdrop-filter:blur(8px)">
+    <button type="button" onClick="{{ scrollToForm }}" style="width:100%;min-height:52px;background:#00A0DF;color:#FFFFFF;border:none;border-radius:8px;font-weight:600;font-size:17px;cursor:pointer">Get my free quote</button>
+  </div>
+</sc-if>
+
+<sc-if value="{{ exitOpen }}" hint-placeholder-val="{{ false }}">
+  <div role="dialog" aria-modal="true" aria-label="Get the estimate by email" onClick="{{ closeExit }}" style="position:fixed;inset:0;z-index:60;background:rgba(17,20,23,.5);display:flex;align-items:center;justify-content:center;padding:20px">
+    <div onClick="{{ stopProp }}" style="background:#FFFFFF;border-radius:12px;padding:28px;max-width:440px;width:100%;box-shadow:0 20px 50px rgba(17,20,23,.25)">
+      <sc-if value="{{ exitNotDone }}" hint-placeholder-val="{{ true }}">
+        <h3 style="font-family:'Archivo',sans-serif;font-weight:700;font-size:24px;line-height:1.2;letter-spacing:-0.01em;margin:0 0 8px">Not ready? Get the 60-second estimate emailed instead.</h3>
+        <p style="font-size:15px;color:#5B6670;margin:0 0 16px">One email. No follow-up sequence.</p>
+        <label for="pu-exit-email" style="display:block;font-weight:600;font-size:15px;margin:0 0 6px">Email</label>
+        <input id="pu-exit-email" type="email" inputmode="email" value="{{ exitEmail }}" onChange="{{ setExitEmail }}" autocomplete="email" style="width:100%;box-sizing:border-box;min-height:48px;padding:12px 14px;border:1.5px solid #E3E7EB;border-radius:8px;font-size:17px;background:#FFFFFF">
+        <sc-if value="{{ errExit }}" hint-placeholder-val="{{ false }}"><p style="color:#B42318;font-size:15px;margin:6px 0 0">{{ errExit }}</p></sc-if>
+        <button type="button" onClick="{{ submitExit }}" style="width:100%;min-height:52px;margin-top:14px;background:#00A0DF;color:#FFFFFF;border:none;border-radius:8px;font-weight:600;font-size:17px;cursor:pointer">Email me the estimate</button>
+        <button type="button" onClick="{{ closeExit }}" style="width:100%;background:none;border:none;color:#5B6670;font-weight:500;font-size:15px;cursor:pointer;padding:12px 0 0;text-decoration:underline">No thanks</button>
+      </sc-if>
+      <sc-if value="{{ exitDone }}" hint-placeholder-val="{{ false }}">
+        <h3 style="font-family:'Archivo',sans-serif;font-weight:700;font-size:24px;margin:0 0 8px">Sent.</h3>
+        <p style="font-size:15px;color:#5B6670;margin:0 0 16px">Check your inbox in the next few minutes.</p>
+        <button type="button" onClick="{{ closeExit }}" style="width:100%;min-height:48px;background:#FFFFFF;color:#111417;border:1.5px solid #E3E7EB;border-radius:8px;font-weight:600;font-size:15px;cursor:pointer">Back to the page</button>
+      </sc-if>
+    </div>
+  </div>
+</sc-if>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;headlineVariant&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;A — Subscription you never agreed to&quot;,&quot;options&quot;:[&quot;A — Subscription you never agreed to&quot;,&quot;B — Rates went up again&quot;,&quot;C — Cut your bill 60%, $0 down&quot;,&quot;D — Bills climbing (ad-match)&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Hero&quot;},&quot;companyName&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Powerless Utility&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Lead form&quot;},&quot;strictZipGating&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Lead form&quot;},&quot;stickyCta&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Conversion&quot;},&quot;exitIntent&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Conversion&quot;}}">
+class Component extends DCLogic {
+  state = { step:1, dq:null, done:false, needsReview:'',
+    bill:null, zip:'', homeowner:null, shade:null, roofAge:null, timeline:null,
+    name:'', phone:'', email:'', consent:false,
+    errors:{}, submitting:false, liveMsg:'',
+    showSticky:false, isMobile:true, exitOpen:false, exitEmail:'', exitDone:false, errExit:'', headlineParam:null };
+  constructor(props){
+    super(props);
+    // Tap answers + ZIP persist; name/phone/email/consent are NEVER persisted (fresh consent each time).
+    try{
+      const s = sessionStorage.getItem('pu_lead_form');
+      if(s){ const saved = JSON.parse(s);
+        ['step','dq','bill','zip','homeowner','shade','roofAge','timeline','needsReview'].forEach(k=>{ if(k in saved) this.state[k]=saved[k]; });
+      }
+    }catch(e){}
+    if([1,2,3].indexOf(this.state.step) === -1) this.state.step = 1; // guard stale 4-step persists
+    this.el = {};
+    ['formCard','h2','h3','bill','zip','own','shade','roof','time','nameF','phone','email','consent','success'].forEach(k=>this.el[k]=React.createRef());
+    this.fired = {}; this.utm = {}; this.referrer = ''; this.landingPage = '';
+    this._lastStep = this.state.step; this._wasDone = this.state.done;
+    // Gating lists — replace with the real service-area data.
+    this.EXCLUDED_ZIPS = ['77327','77328','77331','77335','77350','77351','77360','77364','77371']; // co-op territories
+    this.SERVICE_PREFIXES = ['770','771','772','773','774','775']; // Houston-area allowlist
+  }
+  track(ev, extra){
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push(Object.assign({event:ev}, this.utm, extra||{}));
+    // Production: also fire gtag('event', ev) / fbq('trackCustom', ev, {eventID}) here.
+  }
+  componentDidMount(){
+    const q = new URLSearchParams(location.search);
+    const h = q.get('headline') || q.get('h'); if(h) this.setState({headlineParam:h});
+    const map = {utm_source:'utmSource', utm_medium:'utmMedium', utm_campaign:'utmCampaign', utm_content:'utmContent', utm_term:'utmTerm', gclid:'gclid', fbclid:'fbclid'};
+    Object.keys(map).forEach(k=>{ const v=q.get(k); if(v) this.utm[map[k]]=v; });
+    this.referrer = document.referrer || '';
+    this.landingPage = location.href;
+    this.onResize = ()=>{ const m = window.innerWidth < 900; if(m !== this.state.isMobile) this.setState({isMobile:m}); };
+    this.onResize(); window.addEventListener('resize', this.onResize);
+    if('IntersectionObserver' in window && this.el.formCard.current){
+      this.io = new IntersectionObserver(es=>{ this.setState({showSticky: !es[0].isIntersecting}); }, {threshold:0});
+      this.io.observe(this.el.formCard.current);
+    }
+    this.onScroll = ()=>{
+      const d = document.documentElement;
+      const pct = (window.scrollY + window.innerHeight) / Math.max(d.scrollHeight,1) * 100;
+      [25,50,75,100].forEach(t=>{ if(pct >= t && !this.fired['sd'+t]){ this.fired['sd'+t]=1; this.track('scroll_depth_'+t); } });
+    };
+    window.addEventListener('scroll', this.onScroll, {passive:true});
+    this.onOut = (e)=>{
+      if(!e.relatedTarget && e.clientY < 8 && window.innerWidth >= 900 && !this.state.exitOpen && !this.state.done
+         && !sessionStorage.getItem('pu_exit_shown') && (this.props.exitIntent ?? true)){
+        sessionStorage.setItem('pu_exit_shown','1');
+        this.setState({exitOpen:true});
+      }
+    };
+    document.addEventListener('mouseout', this.onOut);
+  }
+  componentWillUnmount(){
+    window.removeEventListener('resize', this.onResize);
+    window.removeEventListener('scroll', this.onScroll);
+    document.removeEventListener('mouseout', this.onOut);
+    if(this.io) this.io.disconnect();
+  }
+  componentDidUpdate(){
+    const snap = {};
+    ['step','dq','bill','zip','homeowner','shade','roofAge','timeline','needsReview'].forEach(k=>snap[k]=this.state[k]);
+    try{ sessionStorage.setItem('pu_lead_form', JSON.stringify(snap)); }catch(e){}
+    const prevStep = this._lastStep, wasDone = this._wasDone;
+    this._lastStep = this.state.step; this._wasDone = this.state.done;
+    if(prevStep !== undefined && prevStep !== this.state.step){
+      if(this.state.step > prevStep) this.track('step_'+this.state.step+'_reached');
+      const r = {2:'h2',3:'h3'}[this.state.step];
+      if(r && this.el[r].current) this.el[r].current.focus();
+    }
+    if(wasDone === false && this.state.done && this.el.success.current) this.el.success.current.focus();
+  }
+  firstStart(){ if(!this.fired.fs){ this.fired.fs=1; this.track('form_start'); } }
+  fmtPhone(v){
+    let d = v.replace(/\D/g,'');
+    if(d.length > 10 && d.charAt(0) === '1') d = d.slice(1);
+    d = d.slice(0,10);
+    if(d.length > 6) return '(' + d.slice(0,3) + ') ' + d.slice(3,6) + '-' + d.slice(6);
+    if(d.length > 3) return '(' + d.slice(0,3) + ') ' + d.slice(3);
+    return d;
+  }
+  setErr(k, msg){ this.setState({errors: Object.assign({}, this.state.errors, {[k]:msg}), liveMsg: msg || this.state.liveMsg}); }
+  focusErr(refKey){
+    const el = this.el[refKey] && this.el[refKey].current; if(!el) return;
+    const y = el.getBoundingClientRect().top + window.scrollY - 90;
+    window.scrollTo({top:y, behavior:'smooth'});
+    const f = (el.tagName === 'INPUT') ? el : el.querySelector('button, input');
+    if(f) setTimeout(()=>f.focus({preventScroll:true}), 350);
+  }
+  vName(v){ return v.trim().length >= 2 ? '' : 'Please enter your full name.'; }
+  vPhone(v){ return v.replace(/\D/g,'').length === 10 ? '' : 'Enter a valid 10-digit phone number.'; }
+  vEmail(v){ return /^\S+@\S+\.\S+$/.test(v.trim()) ? '' : 'Enter a valid email address.'; }
+  vZip(v){ return /^\d{5}$/.test(v) ? '' : 'Enter a 5-digit ZIP code.'; }
+  renderVals(){
+    const S = this.state, E = S.errors;
+    const sel = (cur, v)=>({ bc: cur===v ? '#00A0DF' : '#E3E7EB', bg: cur===v ? '#E5F5FC' : '#FFFFFF' });
+    const mk = (list, cur, key)=>list.map(v=>Object.assign({label:v, pick:()=>{ this.firstStart(); this.setErr(key,''); this.setState({[key]:v}); }}, sel(cur, v)));
+    const variants = {
+      A: 'Your electric bill is a subscription you never agreed to.',
+      B: "Texas rates went up again. Yours doesn't have to.",
+      C: 'Cut your electric bill by up to 60% with $0 down.',
+      D: 'Texas homeowners are seeing bills climb'
+    };
+    const pv = String(this.props.headlineVariant || 'A').charAt(0).toUpperCase();
+    const headline = S.headlineParam || variants[pv] || variants.A;
+    const useCustomH1 = headline !== variants.A;
+    const companyName = (this.props.companyName ?? 'Powerless Utility');
+    const shadeSel = v=>sel(S.shade, v);
+    const pickShade = v=>()=>{ this.setErr('shade',''); this.setState({shade:v}); };
+    return {
+      headline, useCustomH1, useDefaultH1: !useCustomH1, companyName,
+      isMobileView: S.isMobile, isDesktopView: !S.isMobile,
+      step: S.step, stepName: ({1:'YOUR BILL',2:'YOUR ROOF',3:'YOUR DETAILS'})[S.step],
+      progressPct: ({1:'33%',2:'66%',3:'100%'})[S.step],
+      showWizard: !S.done && !S.dq,
+      isStep1: S.step===1, isStep2: S.step===2, isStep3: S.step===3,
+      dqRenter: S.dq==='renter', dqCoop: S.dq==='coop', dqOut: S.dq==='out',
+      done: S.done, liveMsg: S.liveMsg,
+      billOpts: mk(['Under $100','$100\u2013150','$150\u2013250','$250\u2013350','$350+'], S.bill, 'bill'),
+      ownOpts: mk(['Yes','No'], S.homeowner, 'homeowner'),
+      roofOpts: mk(['0\u201310 yrs','10\u201320 yrs','20+ yrs','Not sure'], S.roofAge, 'roofAge'),
+      timeOpts: mk(['ASAP','1\u20133 months','3\u20136 months','Just researching'], S.timeline, 'timeline'),
+      pickShadeNo: pickShade('No Shade'), pickShadePartial: pickShade('Partial Shade'), pickShadeHeavy: pickShade('Heavy Shade'),
+      shadeNoBc: shadeSel('No Shade').bc, shadeNoBg: shadeSel('No Shade').bg,
+      shadePartialBc: shadeSel('Partial Shade').bc, shadePartialBg: shadeSel('Partial Shade').bg,
+      shadeHeavyBc: shadeSel('Heavy Shade').bc, shadeHeavyBg: shadeSel('Heavy Shade').bg,
+      formCardRef: this.el.formCard, h2Ref: this.el.h2, h3Ref: this.el.h3,
+      billRef: this.el.bill, zipRef: this.el.zip, ownRef: this.el.own,
+      shadeRef: this.el.shade, roofRef: this.el.roof, timeRef: this.el.time,
+      nameRef: this.el.nameF, phoneRef: this.el.phone, emailRef: this.el.email,
+      consentRef: this.el.consent, successRef: this.el.success,
+      zip: S.zip, name: S.name, phone: S.phone, email: S.email,
+      setZip: e=>{ this.firstStart(); this.setState({zip: e.target.value.replace(/\D/g,'').slice(0,5)}); },
+      blurZip: ()=>this.setErr('zip', this.vZip(S.zip)),
+      setName: e=>this.setState({name:e.target.value}),
+      blurName: ()=>this.setErr('name', this.vName(S.name)),
+      setPhone: e=>this.setState({phone:this.fmtPhone(e.target.value)}),
+      blurPhone: ()=>this.setErr('phone', this.vPhone(S.phone)),
+      setEmail: e=>this.setState({email:e.target.value}),
+      blurEmail: ()=>this.setErr('email', this.vEmail(S.email)),
+      errBill: E.bill||'', errZip: E.zip||'', errHomeowner: E.homeowner||'',
+      errShade: E.shade||'', errRoofAge: E.roofAge||'', errTimeline: E.timeline||'',
+      errName: E.name||'', errPhone: E.phone||'', errEmail: E.email||'',
+      errConsent: E.consent||'', errSubmit: E.submit||'',
+      consent: S.consent, consentBorder: E.consent ? '#B42318' : '#E3E7EB',
+      toggleConsent: e=>{ this.setState({consent:e.target.checked}); if(e.target.checked) this.setErr('consent',''); },
+      continue1: ()=>{
+        const errs = {
+          bill: S.bill ? '' : 'Select your average monthly bill.',
+          zip: this.vZip(S.zip),
+          homeowner: S.homeowner ? '' : 'Please select one.'
+        };
+        this.setState({errors: Object.assign({}, E, errs), liveMsg: errs.bill||errs.zip||errs.homeowner||''});
+        const first = errs.bill ? 'bill' : errs.zip ? 'zip' : errs.homeowner ? 'own' : null;
+        if(first){ this.focusErr(first); return; }
+        // Gating — evaluated before step 2 is shown.
+        if(S.homeowner === 'No'){ this.setState({dq:'renter'}); this.track('dq_renter'); return; }
+        if(this.EXCLUDED_ZIPS.indexOf(S.zip) !== -1){ this.setState({dq:'coop'}); this.track('dq_coop'); return; }
+        const inArea = this.SERVICE_PREFIXES.indexOf(S.zip.slice(0,3)) !== -1;
+        if(!inArea && (this.props.strictZipGating ?? false)){ this.setState({dq:'out'}); this.track('dq_out_of_area'); return; }
+        this.setState({needsReview: inArea ? '' : 'REVIEW', step:2});
+      },
+      continue2: ()=>{
+        const errs = {
+          shade: S.shade ? '' : 'Select your roof shade.',
+          roofAge: S.roofAge ? '' : 'Select your roof age.',
+          timeline: S.timeline ? '' : 'Select a timeframe.'
+        };
+        this.setState({errors: Object.assign({}, E, errs), liveMsg: errs.shade||errs.roofAge||errs.timeline||''});
+        const first = errs.shade ? 'shade' : errs.roofAge ? 'roof' : errs.timeline ? 'time' : null;
+        if(first){ this.focusErr(first); return; }
+        this.setState({step:3});
+      },
+      back1: ()=>this.setState({step:1}), back2: ()=>this.setState({step:2}),
+      startOver: ()=>this.setState({dq:null, homeowner:null, step:1, errors:{}}),
+      submitLabel: S.submitting ? 'Sending\u2026' : 'Get my free estimate',
+      submit: ()=>{
+        const errs = { name:this.vName(S.name), phone:this.vPhone(S.phone), email:this.vEmail(S.email),
+          consent: S.consent ? '' : 'Please check the box to continue.' };
+        this.setState({errors: Object.assign({}, E, errs, {submit:''}), liveMsg: errs.name||errs.phone||errs.email||errs.consent||''});
+        const first = errs.name ? 'nameF' : errs.phone ? 'phone' : errs.email ? 'email' : errs.consent ? 'consent' : null;
+        if(first){ this.focusErr(first); return; }
+        if(!companyName.trim()){ this.setErr('submit','Something went wrong sending your request. Please try again.'); return; }
+        if(S.submitting) return;
+        this.setState({submitting:true});
+        const eventId = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now())+Math.random().toString(16).slice(2);
+        const lead = {
+          submittedAt: new Date().toISOString(),
+          needsReview: S.needsReview,
+          name: S.name, email: S.email,
+          phone: '+1' + S.phone.replace(/\D/g,''),
+          zip: S.zip, homeowner: S.homeowner, bill: S.bill,
+          shade: S.shade, roofAge: S.roofAge, timeline: S.timeline,
+          consent: S.consent,
+          fbclid: this.utm.fbclid || '', utmSource: this.utm.utmSource || '',
+          utmMedium: this.utm.utmMedium || '', utmCampaign: this.utm.utmCampaign || '',
+          utmContent: this.utm.utmContent || '', utmTerm: this.utm.utmTerm || '',
+          referrer: this.referrer, landingPage: this.landingPage, eventId
+        };
+        // Production: POST `lead` to the CRM endpoint; on failure setErr('submit','Something went wrong sending your request. Please try again.') and setState({submitting:false}).
+        console.log('lead', lead);
+        setTimeout(()=>{ this.track('lead_submitted', {eventId}); this.setState({done:true, submitting:false, liveMsg:'Request received.'}); }, 700);
+      },
+      startNew: ()=>this.setState({step:1, done:false, dq:null, needsReview:'', bill:null, zip:'', homeowner:null, shade:null, roofAge:null, timeline:null, name:'', phone:'', email:'', consent:false, errors:{}, liveMsg:''}),
+      firstName: (S.name.trim().split(/\s+/)[0]) || 'neighbor',
+      showSticky: S.showSticky && S.isMobile && !S.done && !S.dq && (this.props.stickyCta ?? true),
+      scrollToForm: ()=>{
+        const el = this.el.formCard.current; if(!el) return;
+        const y = el.getBoundingClientRect().top + window.scrollY - 12;
+        window.scrollTo({top:y, behavior:'smooth'});
+        setTimeout(()=>{ const b = el.querySelector('button, input'); if(b) b.focus({preventScroll:true}); }, 650);
+      },
+      exitOpen: S.exitOpen, exitDone: S.exitDone, exitNotDone: !S.exitDone,
+      exitEmail: S.exitEmail, errExit: S.errExit,
+      setExitEmail: e=>this.setState({exitEmail:e.target.value, errExit:''}),
+      submitExit: ()=>{
+        const err = this.vEmail(S.exitEmail);
+        if(err){ this.setState({errExit:err}); return; }
+        this.track('exit_email_captured');
+        this.setState({exitDone:true});
+      },
+      closeExit: ()=>this.setState({exitOpen:false}),
+      stopProp: e=>e.stopPropagation()
+    };
+  }
+}
+</script>
+</body>
+</html>
