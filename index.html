@@ -10,6 +10,12 @@
 <link rel="preload" as="font" type="font/woff2" href="assets/fonts/ibm-plex-sans-400.woff2" crossorigin>
 <link rel="preload" as="font" type="font/woff2" href="assets/fonts/archivo-800.woff2" crossorigin>
 <link rel="stylesheet" href="styles.css">
+<!-- Photography: Unsplash (license: free for commercial use, no attribution required).
+     hero-install, spare crew shot — Raze Solar · reason-bill — Artem Beliaikin
+     reason-payments — SumUp · reason-credit — Morgan Housel · design-preview — Watt A Lot
+     battery-program — Ricardo Gomez Angel · install-photo — Bill Mead
+     These are stock photographs, not Powerless Utility's own installs. Swap in real
+     job-site photos before any campaign that claims them as the company's work. -->
 <meta property="og:type" content="website">
 <meta property="og:title" content="See what solar costs on your roof — free, no obligation">
 <meta property="og:description" content="$0 upfront, licensed Texas installers, 25-year warranty. Takes 60 seconds.">
@@ -48,7 +54,14 @@
         <span class="tick"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8.5l3.2 3.2L13 5" stroke="#0077A8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>No obligation quote</span>
       </div>
       <div class="hero-photo desktop-only">
-        <div class="img-slot" style="max-width:560px;height:220px;--radius:12px" data-placeholder="Hero photo — recent Houston-area install, panels on a real roof"></div>
+        <picture>
+          <source srcset="assets/hero-install.avif" type="image/avif">
+          <source srcset="assets/hero-install.webp" type="image/webp">
+          <img class="img-real" src="assets/hero-install.jpg"
+               alt="Two installers in safety harnesses fitting solar panels to a shingled residential roof under a clear sky"
+               width="1120" height="440" fetchpriority="high" decoding="async"
+               style="max-width:560px;height:220px;--radius:12px">
+        </picture>
       </div>
     </div>
 
@@ -97,20 +110,32 @@
         <picture>
           <source srcset="assets/reason-bill.avif" type="image/avif">
           <source srcset="assets/reason-bill.webp" type="image/webp">
-          <img class="img-real" src="assets/reason-bill.jpg" alt="A homeowner counting cash out of a wallet at an outdoor table" width="694" height="300" loading="lazy" decoding="async" style="height:150px;--radius:10px">
+          <img class="img-real" src="assets/reason-bill.jpg" alt="A homeowner counting cash out of a wallet at an outdoor table" width="720" height="300" loading="lazy" decoding="async" style="height:150px;--radius:10px">
         </picture>
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M17 8a8 8 0 10.9 8" stroke="#111417" stroke-width="2" stroke-linecap="round"></path><path d="M18 3v5h-5" stroke="#111417" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
         <h3>You’re already paying for it.</h3>
         <p>The average Houston-area homeowner pays <span class="figure amber">$2,100–$3,600</span> a year to rent power. Solar redirects that payment into an asset you own.</p>
       </div>
       <div class="reason">
-        <div class="img-slot" style="height:150px;--radius:10px" data-placeholder="Homeowner at kitchen table / payoff moment"></div>
+        <picture>
+          <source srcset="assets/reason-payments.avif" type="image/avif">
+          <source srcset="assets/reason-payments.webp" type="image/webp">
+          <img class="img-real" src="assets/reason-payments.jpg"
+               alt="A person reviewing a printed invoice next to an open laptop"
+               width="720" height="300" loading="lazy" decoding="async" style="height:150px;--radius:10px">
+        </picture>
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2" stroke="#111417" stroke-width="2"></rect><path d="M3 10h18M8 3v4M16 3v4" stroke="#111417" stroke-width="2" stroke-linecap="round"></path><path d="M8.5 15.5l2.3 2.3 4.7-4.7" stroke="#111417" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
         <h3>The payments end. The bill doesn’t.</h3>
         <p>Financed solar has a final payment. Your utility bill has none.</p>
       </div>
       <div class="reason">
-        <div class="img-slot" style="height:150px;--radius:10px" data-placeholder="Sunlit Texas rooftop with panels"></div>
+        <picture>
+          <source srcset="assets/reason-credit.avif" type="image/avif">
+          <source srcset="assets/reason-credit.webp" type="image/webp">
+          <img class="img-real" src="assets/reason-credit.jpg"
+               alt="A hand holding a wall clock, illustrating a deadline"
+               width="720" height="300" loading="lazy" decoding="async" style="height:150px;--radius:10px">
+        </picture>
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="#111417" stroke-width="2"></circle><path d="M12 7v5l3.5 2.5" stroke="#111417" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
         <h3>The federal credit is time-limited.</h3>
         <p>Homeowners can currently claim a 30% federal tax credit, plus utility-level incentives. It steps down.</p>
@@ -156,8 +181,14 @@
         <p class="fineprint">60 seconds. No documents. No obligation.</p>
       </div>
       <div class="process-cta-media">
-        <div class="img-slot" style="height:240px;--radius:12px" data-placeholder="Sample system design — satellite roof view with panel layout"></div>
-        <p class="fineprint mt-8">A real design from step 02 — panels placed on the actual roof.</p>
+        <picture>
+          <source srcset="assets/design-preview.avif" type="image/avif">
+          <source srcset="assets/design-preview.webp" type="image/webp">
+          <img class="img-real" src="assets/design-preview.jpg"
+               alt="A tiled house roof with a solar array laid out across the sunlit south-facing plane"
+               width="880" height="480" loading="lazy" decoding="async" style="height:240px;--radius:12px">
+        </picture>
+        <p class="fineprint mt-8">Illustrative. Your step 02 design shows panels placed on your own roof.</p>
       </div>
     </div>
   </div>
@@ -202,7 +233,13 @@
       <h2>No loan. No financing. <span class="accent-bright">No debt on your home.</span></h2>
       <p class="no-loan-sub">You owe nothing — just pay less for power.</p>
       <div class="no-loan-media">
-        <div class="img-slot" style="height:200px;--radius:8px" data-placeholder="Battery program — home battery or install crew photo"></div>
+        <picture>
+          <source srcset="assets/battery-program.avif" type="image/avif">
+          <source srcset="assets/battery-program.webp" type="image/webp">
+          <img class="img-real" src="assets/battery-program.jpg"
+               alt="Gloved hands connecting the wiring beneath a solar panel during installation"
+               width="936" height="400" loading="lazy" decoding="async" style="height:200px;--radius:8px;display:block">
+        </picture>
       </div>
     </div>
     <div class="no-loan-list">
@@ -248,7 +285,13 @@
 <!-- Final CTA -->
 <section class="final-cta">
   <div class="final-cta-inner">
-    <div class="img-slot" style="height:280px;--radius:12px;margin-bottom:28px" data-placeholder="Completed install — crew or finished roof photo"></div>
+    <picture>
+      <source srcset="assets/install-photo.avif" type="image/avif">
+      <source srcset="assets/install-photo.webp" type="image/webp">
+      <img class="img-real" src="assets/install-photo.jpg"
+           alt="An installer lifting a solar panel into place on a tiled roof beside a completed row of panels"
+           width="1200" height="560" loading="lazy" decoding="async" style="height:280px;--radius:12px;margin-bottom:28px">
+    </picture>
     <h2>See what solar costs <span class="accent">on your roof.</span></h2>
     <button type="button" class="btn btn-primary btn-final" data-scroll-to-form>Get my free estimate</button>
     <p class="fineprint-15">60 seconds. No documents. No obligation.</p>

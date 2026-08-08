@@ -39,23 +39,27 @@ All prototype "props" are the `CONFIG` object at the top of `app.js`:
 3. Add `privacy.html` and `terms.html` — the footer links point at them and
    currently 404. The consent checkbox collects TCPA marketing consent, so a
    reachable privacy policy is a launch blocker, not a nicety.
-4. Fill the six empty photo slots. The design handoff supplied exactly one
-   photo, so every other dashed box is a `<div class="img-slot" …>` waiting on
-   a real image. For each one:
+4. **Swap the stock photography for real job-site photos.** All seven images
+   are currently Unsplash stock (credited in a comment at the top of
+   `index.html`) — they are licensed for commercial use, but they are not
+   Powerless Utility's own installs, crews, or system designs. Two spots to
+   watch: the hero implies a recent local install, and the design-preview
+   caption has been softened to "Illustrative" precisely because the photo is
+   a stock rooftop rather than a real step-02 output. Restore a stronger
+   caption once a genuine design screenshot replaces it.
+
+   To swap any slot: 
 
    ```bash
    python3 tools/add-photo.py hero-install ~/Desktop/roof-photo.jpg
    ```
 
    That writes `assets/<slot>.{avif,webp,jpg}` — centre-cropped to the slot's
-   aspect, capped at 2x its display size — and prints the `<picture>` block to
-   paste over that slot's `<div>`. Fill in the alt text; it is read aloud and
-   shown if the image fails. Slot ids: `hero-install`, `reason-payments`,
-   `reason-credit`, `design-preview`, `battery-program`, `install-photo`.
-
-   The captions on several of these claim provenance — "recent Houston-area
-   install", "A real design from step 02 — panels placed on the actual roof".
-   Use your own work for those, or change the caption.
+   aspect, capped at 2x its display size — and prints the `<picture>` block.
+   Replace that slot's existing `<picture>` with it and write truthful alt
+   text; it is read aloud and shown if the image fails. Slot ids:
+   `hero-install`, `reason-bill`, `reason-payments`, `reason-credit`,
+   `design-preview`, `battery-program`, `install-photo`.
 
    Testimonial avatars are initial monograms (MR / DT / RM), not photos. Swap
    in real customer photos only with their permission.
