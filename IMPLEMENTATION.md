@@ -77,11 +77,10 @@ All prototype "props" are the `CONFIG` object at the top of `app.js`:
 - The one real photo ships as AVIF (42 KB) with WebP (44 KB) and JPEG (49 KB)
   fallbacks, pre-cropped to the aspect the slot actually displays. It was a
   646 KB PNG before — a 93% cut, and it was 98% of total page weight.
-- Regenerate the derivatives from the master after replacing it:
-
-  ```bash
-  python3 -c "from PIL import Image; im=Image.open('assets/reason-bill.png').convert('RGB'); w,h=im.size; t=round(w/2.31); im=im.crop((0,(h-t)//2,w,(h-t)//2+t)); im.save('assets/reason-bill.avif',quality=62); im.save('assets/reason-bill.webp',quality=80,method=6); im.save('assets/reason-bill.jpg',quality=82,optimize=True,progressive=True)"
-  ```
+- Regenerate the derivatives from a master with `tools/add-photo.py <slot> <file>`.
+- The four largest images ship a second, narrower encode (`*-sm.avif` /
+  `*-sm.webp`, 760px) selected by `<source media="(max-width:899px)">`, so a
+  phone downloads roughly half the bytes of the desktop file.
 
 - `app.js` is deferred; CSS is a single render-blocking file (~4 KB gzipped).
 - Layout is CLS-free: the image carries intrinsic `width`/`height`, and the
@@ -97,3 +96,14 @@ All prototype "props" are the `CONFIG` object at the top of `app.js`:
   submit.
 - `prefers-reduced-motion` disables the hero drain animation, progress
   transition, and smooth scrolling.
+
+## Deliberate deviations from the prototype
+
+- **The hero photo shows on mobile.** The prototype gated it behind
+  `isDesktopView` and hid it under 900px. It now renders at every width, using
+  its natural 1120:440 ratio on mobile instead of the desktop crop to 220px —
+  the full frame in ~132px of height on a 375px screen. That pushes the form
+  card's top from roughly 438px to 594px, still inside the first viewport on a
+  375x812 phone, with the step header and first question visible. If mobile
+  conversion drops, this is the first thing to A/B — restore the old behavior
+  by adding `desktop-only` back to the `.hero-photo` div in `index.html`.

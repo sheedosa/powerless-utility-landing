@@ -135,6 +135,9 @@ input:focus-visible,button:focus-visible,summary:focus-visible,a:focus-visible{o
 .hero-ticks{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:18px}
 .tick{display:flex;gap:7px;align-items:center;font-size:15px;color:var(--muted)}
 .hero-photo{margin-top:24px}
+/* Mobile: show the whole frame at its natural ratio rather than cropping to a
+   fixed height — keeps the photo intact and the form card close to the fold. */
+.hero-img{height:auto;aspect-ratio:1120/440;--radius:12px}
 
 /* ---------- Form card ---------- */
 .form-card{
@@ -298,7 +301,9 @@ label.input-label.spaced-sm{margin:14px 0 6px}
 .footer-link:hover{color:#FFFFFF}
 .footer-disclaimer{font-size:13px;max-width:52ch}
 .footer-legal{display:flex;flex-wrap:wrap;gap:8px 20px;font-size:13px;align-items:center}
-.footer-legal a,.footer-col a{display:inline-block;padding:5px 0}
+/* 12px of vertical padding takes the footer links from a 31px line box to a
+   45px touch target — the phone number is a primary mobile action. */
+.footer-legal a,.footer-col a{display:inline-block;padding:12px 0}
 
 /* ---------- Sticky CTA ---------- */
 .sticky-cta{position:fixed;left:0;right:0;bottom:0;z-index:50;padding:10px 16px calc(10px + env(safe-area-inset-bottom));background:rgba(255,255,255,.96);border-top:1px solid var(--line);backdrop-filter:blur(8px)}
@@ -321,6 +326,7 @@ body.has-sticky{padding-bottom:calc(74px + env(safe-area-inset-bottom))}
   .desktop-only{display:block}
   .desktop-only-inline{display:inline}
   .mobile-only-inline{display:none}
+  .hero-img{max-width:560px;height:220px;aspect-ratio:auto}
 }
 @media (max-width:899px){
   .form-card{position:static}
