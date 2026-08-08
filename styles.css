@@ -1,3 +1,63 @@
+/* Self-hosted latin subsets of Archivo and IBM Plex (SIL Open Font License 1.1).
+   Subsets fetched from Google Fonts; see IMPLEMENTATION.md. */
+
+@font-face{
+  font-family:'Archivo';
+  font-style:normal;
+  font-weight:700;
+  font-display:swap;
+  src:url('assets/fonts/archivo-700.woff2') format('woff2');
+  unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face{
+  font-family:'Archivo';
+  font-style:normal;
+  font-weight:800;
+  font-display:swap;
+  src:url('assets/fonts/archivo-800.woff2') format('woff2');
+  unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face{
+  font-family:'IBM Plex Mono';
+  font-style:normal;
+  font-weight:500;
+  font-display:swap;
+  src:url('assets/fonts/ibm-plex-mono-500.woff2') format('woff2');
+  unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face{
+  font-family:'IBM Plex Mono';
+  font-style:normal;
+  font-weight:600;
+  font-display:swap;
+  src:url('assets/fonts/ibm-plex-mono-600.woff2') format('woff2');
+  unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face{
+  font-family:'IBM Plex Sans';
+  font-style:normal;
+  font-weight:400;
+  font-display:swap;
+  src:url('assets/fonts/ibm-plex-sans-400.woff2') format('woff2');
+  unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face{
+  font-family:'IBM Plex Sans';
+  font-style:normal;
+  font-weight:500;
+  font-display:swap;
+  src:url('assets/fonts/ibm-plex-sans-500.woff2') format('woff2');
+  unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face{
+  font-family:'IBM Plex Sans';
+  font-style:normal;
+  font-weight:600;
+  font-display:swap;
+  src:url('assets/fonts/ibm-plex-sans-600.woff2') format('woff2');
+  unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
 :root{
   --ink:#111417;
   --muted:#5B6670;
@@ -24,6 +84,8 @@ img{max-width:100%}
 input:focus-visible,button:focus-visible,summary:focus-visible,a:focus-visible{outline:2px solid var(--brand-dark);outline-offset:2px}
 
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap}
+.skip-link{position:absolute;left:-9999px;top:0;z-index:100;background:#FFFFFF;color:var(--brand-dark);padding:10px 16px;border:1px solid var(--line);border-radius:0 0 8px 0;font-weight:600}
+.skip-link:focus{left:0}
 
 .wrap{max-width:1120px;margin:0 auto;padding-left:20px;padding-right:20px}
 .wrap-narrow{max-width:760px;margin:0 auto;padding-left:20px;padding-right:20px}
@@ -229,11 +291,14 @@ label.input-label.spaced-sm{margin:14px 0 6px}
 .footer-link{color:var(--dark-body)}
 .footer-link:hover{color:#FFFFFF}
 .footer-disclaimer{font-size:13px;max-width:52ch}
-.footer-legal{display:flex;gap:20px;font-size:13px;align-items:center}
+.footer-legal{display:flex;flex-wrap:wrap;gap:8px 20px;font-size:13px;align-items:center}
+.footer-legal a,.footer-col a{display:inline-block;padding:5px 0}
 
 /* ---------- Sticky CTA ---------- */
 .sticky-cta{position:fixed;left:0;right:0;bottom:0;z-index:50;padding:10px 16px calc(10px + env(safe-area-inset-bottom));background:rgba(255,255,255,.96);border-top:1px solid var(--line);backdrop-filter:blur(8px)}
 .sticky-cta[hidden]{display:none}
+/* Keep the fixed bar from covering the last of the page content. */
+body.has-sticky{padding-bottom:calc(74px + env(safe-area-inset-bottom))}
 
 /* ---------- Exit intent ---------- */
 .exit-overlay{position:fixed;inset:0;z-index:60;background:rgba(17,20,23,.5);display:flex;align-items:center;justify-content:center;padding:20px}

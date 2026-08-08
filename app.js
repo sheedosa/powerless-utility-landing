@@ -172,10 +172,17 @@
 
   function optButtons(list, key, current, modifier) {
     return list.map(function (label) {
-      var selected = current === label ? ' selected' : '';
-      return '<button type="button" class="opt' + (modifier ? ' ' + modifier : '') + selected +
-        '" data-pick="' + key + '" data-value="' + esc(label) + '">' + esc(label) + '</button>';
+      var on = current === label;
+      return '<button type="button" class="opt' + (modifier ? ' ' + modifier : '') + (on ? ' selected' : '') +
+        '" data-pick="' + key + '" data-value="' + esc(label) + '" aria-pressed="' + on + '">' + esc(label) + '</button>';
     }).join('');
+  }
+
+  // Wraps an option group in a labelled group so the question is announced
+  // with the choices rather than the buttons standing on their own.
+  function optGroup(key, labelId, list, current, cols, modifier) {
+    return '<div class="opt-grid cols-' + cols + '" role="group" aria-labelledby="' + labelId + '" data-group="' + key + '">' +
+      optButtons(list, key, current, modifier) + '</div>';
   }
 
   function stepHeader() {
@@ -193,15 +200,15 @@
     return '' +
       '<h2>Your electric bill</h2>' +
       '<p class="card-sub">Start with what you spend — no bills or documents needed.</p>' +
-      '<p class="field-label">Average monthly electric bill</p>' +
-      '<div class="opt-grid cols-2" data-group="bill">' + optButtons(BILL_OPTS, 'bill', state.bill) + '</div>' +
+      '<p class="field-label" id="lbl-bill">Average monthly electric bill</p>' +
+      optGroup('bill', 'lbl-bill', BILL_OPTS, state.bill, 2) +
       errBlock('bill') +
       '<label class="input-label spaced" for="pu-zip">ZIP code</label>' +
       '<input id="pu-zip" class="text-input mono" type="text" inputmode="numeric" autocomplete="postal-code" ' +
         'placeholder="77002" value="' + esc(state.zip) + '" data-field="zip">' +
       errBlock('zip') +
-      '<p class="field-label spaced">Do you own this home?</p>' +
-      '<div class="opt-grid cols-2" data-group="homeowner">' + optButtons(OWN_OPTS, 'homeowner', state.homeowner, 'opt-word opt-own') + '</div>' +
+      '<p class="field-label spaced" id="lbl-own">Do you own this home?</p>' +
+      optGroup('homeowner', 'lbl-own', OWN_OPTS, state.homeowner, 2, 'opt-word opt-own') +
       errBlock('homeowner') +
       '<p class="hint">Homeowners qualify for the $0-upfront program.</p>' +
       '<button type="button" class="btn btn-primary btn-block" data-action="continue1">Continue</button>' +
@@ -212,14 +219,14 @@
     return '' +
       '<h2 tabindex="-1" data-focus="step2">Your roof</h2>' +
       '<p class="card-sub">Three taps and we can size your system.</p>' +
-      '<p class="field-label">How shaded is your roof?</p>' +
-      '<div class="opt-grid cols-3" data-group="shade">' + optButtons(SHADE_OPTS, 'shade', state.shade, 'opt-word opt-shade') + '</div>' +
+      '<p class="field-label" id="lbl-shade">How shaded is your roof?</p>' +
+      optGroup('shade', 'lbl-shade', SHADE_OPTS, state.shade, 3, 'opt-word opt-shade') +
       errBlock('shade') +
-      '<p class="field-label spaced">Roof age</p>' +
-      '<div class="opt-grid cols-2" data-group="roofAge">' + optButtons(ROOF_OPTS, 'roofAge', state.roofAge, 'opt-word') + '</div>' +
+      '<p class="field-label spaced" id="lbl-roof">Roof age</p>' +
+      optGroup('roofAge', 'lbl-roof', ROOF_OPTS, state.roofAge, 2, 'opt-word') +
       errBlock('roofAge') +
-      '<p class="field-label spaced">When are you looking to move forward?</p>' +
-      '<div class="opt-grid cols-2" data-group="timeline">' + optButtons(TIME_OPTS, 'timeline', state.timeline, 'opt-word') + '</div>' +
+      '<p class="field-label spaced" id="lbl-time">When are you looking to move forward?</p>' +
+      optGroup('timeline', 'lbl-time', TIME_OPTS, state.timeline, 2, 'opt-word') +
       errBlock('timeline') +
       '<div class="nav-row">' +
         '<button type="button" class="btn-link" data-action="back1">&#8592; Back</button>' +
@@ -475,7 +482,9 @@
       state[key] = pick.getAttribute('data-value');
       var group = pick.parentElement;
       Array.prototype.forEach.call(group.querySelectorAll('[data-pick]'), function (b) {
-        b.classList.toggle('selected', b === pick);
+        var on = b === pick;
+        b.classList.toggle('selected', on);
+        b.setAttribute('aria-pressed', String(on));
       });
       setErr(key, '');
       writeSession();
@@ -538,6 +547,7 @@
   function updateSticky() {
     var show = !formCardVisible && isMobile() && !state.done && !state.dq && CONFIG.stickyCta;
     els.sticky.hidden = !show;
+    document.body.classList.toggle('has-sticky', show);
   }
 
   if ('IntersectionObserver' in window && els.formCard) {
@@ -583,7 +593,10 @@
     }
   }
 
+  var exitReturnFocus = null;
+
   function openExit() {
+    exitReturnFocus = document.activeElement;
     state.exitOpen = true;
     renderExit();
   }
@@ -591,6 +604,18 @@
   function closeExit() {
     state.exitOpen = false;
     els.exitOverlay.hidden = true;
+    if (exitReturnFocus && document.contains(exitReturnFocus)) exitReturnFocus.focus();
+    exitReturnFocus = null;
+  }
+
+  // Keep Tab inside the dialog while it is open.
+  function trapTab(e) {
+    if (e.key !== 'Tab' || !state.exitOpen) return;
+    var focusable = els.exitDialog.querySelectorAll('button, input, a[href]');
+    if (!focusable.length) return;
+    var first = focusable[0], last = focusable[focusable.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
   }
 
   els.exitOverlay.addEventListener('click', function (e) {
@@ -614,7 +639,9 @@
   });
 
   document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape' && state.exitOpen) closeExit();
+    if (!state.exitOpen) return;
+    if (e.key === 'Escape') closeExit();
+    else trapTab(e);
   });
 
   document.addEventListener('mouseout', function (e) {

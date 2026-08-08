@@ -5,12 +5,20 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Powerless Utility — Free Solar Quote for Texas Homeowners</title>
 <meta name="description" content="See what solar costs on your roof — free, and no obligation. $0 upfront, licensed Texas installers, 25-year warranty. Takes 60 seconds.">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<meta name="theme-color" content="#00A0DF">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="preload" as="font" type="font/woff2" href="assets/fonts/ibm-plex-sans-400.woff2" crossorigin>
+<link rel="preload" as="font" type="font/woff2" href="assets/fonts/archivo-800.woff2" crossorigin>
 <link rel="stylesheet" href="styles.css">
+<meta property="og:type" content="website">
+<meta property="og:title" content="See what solar costs on your roof — free, no obligation">
+<meta property="og:description" content="$0 upfront, licensed Texas installers, 25-year warranty. Takes 60 seconds.">
+<meta property="og:image" content="assets/reason-bill.jpg">
+<meta name="twitter:card" content="summary_large_image">
 </head>
 <body>
+
+<a class="skip-link" href="#main">Skip to content</a>
 
 <header class="site-header">
   <div class="brand">
@@ -20,6 +28,7 @@
   <span class="header-region"><span class="desktop-only-inline">TX ⌁ SERVING TEXAS</span><span class="mobile-only-inline">TX ⌁</span></span>
 </header>
 
+<main id="main">
 <!-- Hero + Form -->
 <section class="hero">
   <div class="hero-inner">
@@ -85,7 +94,11 @@
     </div>
     <div class="cols-260">
       <div class="reason">
-        <img class="img-real" src="assets/reason-bill.png" alt="Close-up of a residential electric meter and monthly bill" width="694" height="463" loading="lazy" style="height:150px;--radius:10px">
+        <picture>
+          <source srcset="assets/reason-bill.avif" type="image/avif">
+          <source srcset="assets/reason-bill.webp" type="image/webp">
+          <img class="img-real" src="assets/reason-bill.jpg" alt="A homeowner counting cash out of a wallet at an outdoor table" width="694" height="300" loading="lazy" decoding="async" style="height:150px;--radius:10px">
+        </picture>
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M17 8a8 8 0 10.9 8" stroke="#111417" stroke-width="2" stroke-linecap="round"></path><path d="M18 3v5h-5" stroke="#111417" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
         <h3>You’re already paying for it.</h3>
         <p>The average Houston-area homeowner pays <span class="figure amber">$2,100–$3,600</span> a year to rent power. Solar redirects that payment into an asset you own.</p>
@@ -242,6 +255,8 @@
   </div>
 </section>
 
+</main>
+
 <footer class="site-footer">
   <div class="wrap footer-inner">
     <div class="footer-col">
@@ -255,8 +270,8 @@
       <span class="footer-disclaimer">Not affiliated with or endorsed by CenterPoint Energy, Oncor, AEP Texas, Texas-New Mexico Power.</span>
     </div>
     <div class="footer-legal">
-      <a href="/privacy" target="_blank" rel="noopener" class="footer-link">Privacy Policy</a>
-      <a href="/terms" target="_blank" rel="noopener" class="footer-link">Terms</a>
+      <a href="privacy.html" target="_blank" rel="noopener" class="footer-link">Privacy Policy</a>
+      <a href="terms.html" target="_blank" rel="noopener" class="footer-link">Terms</a>
       <span>© 2026 Powerless Utility</span>
     </div>
   </div>
@@ -270,6 +285,6 @@
   <div class="exit-dialog" role="dialog" aria-modal="true" aria-label="Get the estimate by email" id="exit-dialog"></div>
 </div>
 
-<script src="app.js"></script>
+<script src="app.js" defer></script>
 </body>
 </html>
