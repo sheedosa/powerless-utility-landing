@@ -42,10 +42,7 @@ All prototype "props" are the `CONFIG` object at the top of `app.js`:
 4. **Swap the stock photography for real job-site photos.** All seven images
    are currently Unsplash stock (credited in a comment at the top of
    `index.html`) — they are licensed for commercial use, but they are not
-   Powerless Utility's own installs, crews, or system designs. The
-   `reason-outage` slot is the weakest: it carries a generic install shot
-   standing in for a battery or storm photo that would actually sell the
-   resilience message. Two spots to
+   Powerless Utility's own installs, crews, or system designs. Two spots to
    watch: the hero implies a recent local install, and the design-preview
    caption has been softened to "Illustrative" precisely because the photo is
    a stock rooftop rather than a real step-02 output. Restore a stronger
