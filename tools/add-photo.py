@@ -17,7 +17,7 @@ from PIL import Image
 SLOTS = {
     'hero-install':    (560, 220, 12),
     'reason-payments': (360, 150, 10),
-    'reason-credit':   (360, 150, 10),
+    'reason-outage':   (360, 150, 10),
     'design-preview':  (440, 240, 12),
     'battery-program': (468, 200, 8),
     'install-photo':   (600, 280, 12),

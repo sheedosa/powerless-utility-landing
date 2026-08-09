@@ -42,7 +42,10 @@ All prototype "props" are the `CONFIG` object at the top of `app.js`:
 4. **Swap the stock photography for real job-site photos.** All seven images
    are currently Unsplash stock (credited in a comment at the top of
    `index.html`) — they are licensed for commercial use, but they are not
-   Powerless Utility's own installs, crews, or system designs. Two spots to
+   Powerless Utility's own installs, crews, or system designs. The
+   `reason-outage` slot is the weakest: it carries a generic install shot
+   standing in for a battery or storm photo that would actually sell the
+   resilience message. Two spots to
    watch: the hero implies a recent local install, and the design-preview
    caption has been softened to "Illustrative" precisely because the photo is
    a stock rooftop rather than a real step-02 output. Restore a stronger
@@ -96,6 +99,25 @@ All prototype "props" are the `CONFIG` object at the top of `app.js`:
   submit.
 - `prefers-reduced-motion` disables the hero drain animation, progress
   transition, and smooth scrolling.
+
+## Claims and compliance
+
+- **No financing vocabulary.** The words *financed*, *financing*, *loan*, and
+  *debt* were removed from all user-visible copy on request — the audience reads
+  them as risk. The offer is stated as "$0 down, you only pay for power, without
+  the unnecessary fees." Keep new copy to that framing.
+- **No federal tax credit claim.** The 30% residential credit terminated for
+  expenditures after 12/31/2025, and the reason-card built on it was removed
+  rather than reworded. Do not reintroduce it.
+- **The outage card must not overstate.** It says to *pair the system with a
+  battery*. Grid-tied solar disconnects during an outage for lineworker safety —
+  the FAQ says so explicitly, and the card must never imply panels alone keep
+  the lights on.
+- **The TECL licence number was removed** from the proof strip and the footer at
+  the client's direction, replaced with "licensed and warrantied installation."
+  Texas rules generally require an electrical contractor's licence number in
+  advertising — confirm with whoever handles TDLR compliance whether this page
+  is covered before running paid traffic to it.
 
 ## Deliberate deviations from the prototype
 

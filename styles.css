@@ -198,7 +198,7 @@ label.input-label.spaced-sm{margin:14px 0 6px}
 .btn-final{width:100%;max-width:400px;min-height:56px}
 .btn-sticky{width:100%;min-height:52px}
 .btn-link{background:none;border:none;color:var(--muted);font-weight:500;font-size:15px;cursor:pointer;padding:12px 4px;text-decoration:underline;flex-shrink:0}
-.btn-link-brand{background:none;border:none;color:var(--brand-dark);font-weight:600;font-size:15px;cursor:pointer;padding:4px 0;text-decoration:underline}
+.btn-link-brand{background:none;border:none;color:var(--brand-dark);font-weight:600;font-size:15px;cursor:pointer;padding:13px 0;text-decoration:underline}
 .nav-row{display:flex;align-items:center;gap:16px;margin-top:18px}
 .nav-row .btn-primary{flex:1;min-height:56px}
 
@@ -215,7 +215,7 @@ label.input-label.spaced-sm{margin:14px 0 6px}
 .success-footer p{font-weight:600;font-size:15px;margin:0}
 .call-btn{display:flex;align-items:center;justify-content:center;min-height:52px;background:var(--brand);color:#FFFFFF;border-radius:8px;font-weight:600;font-size:17px;text-decoration:none}
 .call-btn:hover{color:#FFFFFF}
-.restart-btn{background:none;border:none;color:var(--muted);font-weight:500;font-size:15px;cursor:pointer;padding:6px 0 0;text-decoration:underline}
+.restart-btn{background:none;border:none;color:var(--muted);font-weight:500;font-size:15px;cursor:pointer;padding:13px 0;text-decoration:underline}
 
 /* ---------- Proof strip ---------- */
 .proof{background:var(--surface);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
