@@ -19,8 +19,37 @@
     excludedZips: ['77327', '77328', '77331', '77335', '77350', '77351', '77360', '77364', '77371'],
     servicePrefixes: ['770', '771', '772', '773', '774', '775'],
     // Production: point this at the CRM endpoint. null = log only.
-    leadEndpoint: null
+    // Confirm the real destination with the owner before wiring it up, and keep
+    // any credentials server-side — never in this file.
+    leadEndpoint: null,
+    // Bump this whenever CONSENT_DISCLOSURE_HTML changes, so an existing consent
+    // record still identifies the exact wording that visitor was shown.
+    consentVersion: '2026-09-09.1'
   };
+
+  /* The consent disclosure, shown immediately above the submit button and stored
+     verbatim with every enquiry as consent evidence.
+
+     UNRESOLVED — owner decision required before any automated calling, texting,
+     or CRM dialler is switched on (see IMPLEMENTATION.md). "and its partners" is
+     a broad permission for contact by an unnamed seller; the disclosure has to
+     name the party that will actually call or text and the technology it uses.
+     Do not widen it, and do not treat this checkbox as permission to start an
+     automated marketing sequence. */
+  var CONSENT_DISCLOSURE_HTML =
+    'By checking this box, I expressly consent to receive marketing calls, text messages, and emails from ' +
+    '<strong>' + esc(CONFIG.companyName) + '</strong> and its partners at the phone number and email I provided — ' +
+    'including messages sent using an autodialer or prerecorded voice. I understand consent is not a condition of any ' +
+    'purchase, and message &amp; data rates may apply. Reply STOP to opt out at any time.';
+
+  // The same disclosure as plain text, for the stored consent record.
+  function consentDisclosureText() {
+    return CONSENT_DISCLOSURE_HTML
+      .replace(/<[^>]+>/g, '')
+      .replace(/&amp;/g, '&')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
 
   var HEADLINES = {
     A: 'Your electric bill is <span class="accent">a subscription you never agreed to.</span>',
@@ -250,14 +279,20 @@
       '<input id="pu-email" class="text-input" type="email" inputmode="email" autocomplete="email" placeholder="jane@example.com" ' +
         'value="' + esc(state.email) + '" data-field="email">' +
       errBlock('email') +
+      // Unchecked on every render — consent is never persisted or pre-ticked,
+      // and it is separate from accepting the terms.
       '<label class="consent' + (state.errors.consent ? ' invalid' : '') + '" data-group="consent">' +
         '<input type="checkbox" data-field="consent"' + (state.consent ? ' checked' : '') + '>' +
-        '<span>By checking this box, I expressly consent to receive marketing calls, text messages, and emails from ' +
-        '<strong>' + esc(CONFIG.companyName) + '</strong> and its partners at the phone number and email I provided — ' +
-        'including messages sent using an autodialer or prerecorded voice. I understand consent is not a condition of any ' +
-        'purchase, and message &amp; data rates may apply. Reply STOP to opt out at any time.</span>' +
+        '<span>' + CONSENT_DISCLOSURE_HTML + '</span>' +
       '</label>' +
       errBlock('consent') +
+      // Policy links sit outside the label so tapping one navigates instead of
+      // toggling the checkbox.
+      '<p class="consent-links">' +
+        '<a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a>' +
+        '<span aria-hidden="true"> &middot; </span>' +
+        '<a href="terms.html" target="_blank" rel="noopener">Terms and Conditions</a>' +
+      '</p>' +
       errBlock('submit', 'spaced') +
       '<div class="nav-row">' +
         '<button type="button" class="btn-link" data-action="back2">&#8592; Back</button>' +
@@ -405,8 +440,12 @@
       ? crypto.randomUUID()
       : String(Date.now()) + Math.random().toString(16).slice(2);
 
+    var now = new Date();
+    var timeZone = '';
+    try { timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) {}
+
     var lead = {
-      submittedAt: new Date().toISOString(),
+      submittedAt: now.toISOString(),
       needsReview: state.needsReview,
       name: state.name,
       email: state.email,
@@ -418,6 +457,20 @@
       roofAge: state.roofAge,
       timeline: state.timeline,
       consent: state.consent,
+      /* Consent evidence kept with the enquiry: the box state, the exact wording
+         shown, its version, the submission time with timezone, and the page the
+         form was submitted from. The submitting IP address has to be recorded
+         server-side — it cannot be read from the browser — and the published
+         privacy notice covers collecting it. */
+      consentRecord: {
+        given: state.consent,
+        version: CONFIG.consentVersion,
+        disclosure: consentDisclosureText(),
+        submittedAt: now.toISOString(),
+        timeZone: timeZone,
+        utcOffsetMinutes: -now.getTimezoneOffset(),
+        pageUrl: location.href
+      },
       fbclid: tracking.utm.fbclid || '',
       utmSource: tracking.utm.utmSource || '',
       utmMedium: tracking.utm.utmMedium || '',

@@ -3,6 +3,9 @@
 Built from the Claude Design handoff in `project/Powerless Utility Landing.dc.html`.
 
 - `index.html` — page markup (static sections; the lead-form card is rendered by JS)
+- `privacy.html` / `terms.html` — the two policy pages, served at `/privacy.html`
+  and `/terms.html`; they carry the site header, footer and typography and
+  nothing but the approved policy text in between
 - `styles.css` — `@font-face` rules + all styling, tokens in `:root`
 - `app.js` — 3-step wizard, validation, gating, tracking, sticky CTA, exit-intent modal
 - `assets/reason-bill.{avif,webp,jpg}` — the one real photo from the prototype, served
@@ -30,15 +33,23 @@ All prototype "props" are the `CONFIG` object at the top of `app.js`:
 | `exitIntent` | `true` | Desktop exit-intent email capture, once per session |
 | `excludedZips` / `servicePrefixes` | Houston sample data | **Placeholder** — replace with the real service-area lists |
 | `leadEndpoint` | `null` | When set, the lead is POSTed as JSON; when `null` it is logged and the success state is simulated |
+| `consentVersion` | `'2026-09-09.1'` | Stored with every consent record; bump it whenever `CONSENT_DISCLOSURE_HTML` changes |
 
 ## Before launch
 
-1. Set `CONFIG.leadEndpoint` to the CRM endpoint (failures already surface the
-   retry error and re-enable the submit button).
+1. **Confirm the enquiry destination with the owner, then set
+   `CONFIG.leadEndpoint`** to it (failures already surface the retry error and
+   re-enable the submit button). Keep any integration secret server-side — never
+   in this repo — send over HTTPS only, and restrict access to the people
+   handling enquiries. The browser cannot see the submitting IP address, so the
+   receiving endpoint has to record it alongside `consentRecord`; the published
+   privacy notice covers collecting it. Then run a real end-to-end test with
+   owner-authorised test details: submission, consent capture, delivery landing
+   in the destination, and an opt-out. A success message on the page does not
+   prove delivery.
 2. Replace `excludedZips` / `servicePrefixes` with real service-area data.
-3. Add `privacy.html` and `terms.html` — the footer links point at them and
-   currently 404. The consent checkbox collects TCPA marketing consent, so a
-   reachable privacy policy is a launch blocker, not a nicety.
+3. **Settle the consent disclosure — see "Consent and enquiry data" below.**
+   It is the one open item in the form that a code change alone cannot close.
 4. **Swap the stock photography for real job-site photos.** All seven images
    are currently Unsplash stock (credited in a comment at the top of
    `index.html`) — they are licensed for commercial use, but they are not
@@ -115,6 +126,70 @@ All prototype "props" are the `CONFIG` object at the top of `app.js`:
   Texas rules generally require an electrical contractor's licence number in
   advertising — confirm with whoever handles TDLR compliance whether this page
   is covered before running paid traffic to it.
+
+## Consent and enquiry data
+
+Implements section 4 of the owner handoff (7 September 2026).
+
+- **The checkbox starts unchecked and is never pre-ticked or persisted.** Consent
+  is separate from accepting the terms, and the disclosure sits immediately above
+  the submit button at every width. `Privacy Policy` and `Terms and Conditions`
+  links sit directly under it — outside the `<label>`, so tapping one navigates
+  instead of toggling the box. The utility non-affiliation disclaimer stays where
+  it was; the checkbox did not replace it.
+- **Every enquiry carries a `consentRecord`**: the box state, the exact
+  disclosure text the visitor saw, `CONFIG.consentVersion`, the submission time
+  in UTC with the visitor's IANA timezone and UTC offset, and the URL the form
+  was submitted from. Bump `consentVersion` whenever the wording changes so old
+  records still identify what was actually shown. The submitting IP address must
+  be added server-side.
+- **UNRESOLVED — the disclosure wording needs an owner decision.** It currently
+  reads "from **Powerless Utility** and its partners … including messages sent
+  using an autodialer or prerecorded voice." The handoff explicitly declines to
+  certify that unnamed-"partners" reference as sufficient permission for
+  automated contact by another seller, so the wording is left exactly as the
+  owner had it rather than rewritten here. Before any paid traffic runs, the
+  disclosure has to name the party that will actually call or text and the
+  contact technology it will use. Do not widen it, and do not switch on an
+  automated call or text sequence on the strength of the checkbox alone — an
+  unchecked box is not permission for automated marketing, and a checked one is
+  not permission for more contact than the visitor asked for. If the planned CRM
+  integration needs different consent, raise that specific point with the owner.
+  Edit `CONSENT_DISCLOSURE_HTML` at the top of `app.js` and bump
+  `CONFIG.consentVersion` in the same change; both the page and the stored
+  record read from it.
+- **The one-call promise governs any integration.** "We call once. If it's not
+  for you, tell us and we're done." No extra automated call sequence may be
+  activated in the CRM or a follow-up service.
+- **Opt-outs must be actionable, and that part is not code.** STOP replies and
+  emails to `info@powerlessutility.com` have to reach whoever handles follow-up
+  and suppress further marketing, with suppression records kept so an opted-out
+  person is not re-added later. The mailbox needs to be monitored — the privacy
+  policy points every access, correction, deletion and opt-out request at it.
+- **Retention.** Use a documented schedule matched to the actual workflow.
+  Covered FTC telemarketing records require five years; apply longer
+  requirements where they apply.
+- **The privacy notice describes what the page does today** — enquiries, consent
+  records, administrative service providers, and the solar provider preparing a
+  requested proposal. The page still makes zero third-party requests: no Meta
+  Pixel, no Google Analytics, no address autocomplete. `track()` only pushes to
+  `window.dataLayer`. **If any of those is added, update `privacy.html` to
+  describe it accurately before the tool goes live.**
+
+## Removed credential claims
+
+At the owner's direction (handoff section 2), the **BBB A+**, **NABCEP
+Certified** and **Tier-1 Panel Partner** badges and their claims were removed
+from the proof strip in `index.html` and from the design source in
+`project/`. Nothing was invented to replace them — the row now holds the three
+remaining badges (battery program, Texas-based, info stays private) and the flex
+row closes the gap on its own, so the design is unchanged apart from being
+shorter. Do not reintroduce these three, and do not substitute new credentials
+or partnerships. The separate licensed-installation and warranty language is
+untouched, as instructed.
+
+The review section heading is now "Homeowners we've helped." The review text
+itself is unchanged; the owner confirms the reviews are genuine.
 
 ## Deliberate deviations from the prototype
 
