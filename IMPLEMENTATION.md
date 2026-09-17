@@ -34,6 +34,7 @@ All prototype "props" are the `CONFIG` object at the top of `app.js`:
 | `excludedZips` / `servicePrefixes` | Houston sample data | **Placeholder** — replace with the real service-area lists |
 | `leadEndpoint` | `null` | When set, the lead is POSTed as JSON; when `null` it is logged and the success state is simulated |
 | `consentVersion` | `'2026-09-09.1'` | Stored with every consent record; bump it whenever `CONSENT_DISCLOSURE_HTML` changes |
+| `addressAutocomplete` | `{proxyUrl:'', apiKey:'', country:'us'}` | Address suggestions. **Off** until `proxyUrl` or `apiKey` is set — see "Address field" |
 
 ## Before launch
 
@@ -82,9 +83,10 @@ All prototype "props" are the `CONFIG` object at the top of `app.js`:
 
 ## Performance notes
 
-- Zero third-party requests. Fonts are self-hosted latin subsets; the two used
-  above the fold (IBM Plex Sans 400, Archivo 800) are preloaded, and all seven
-  carry `font-display:swap`.
+- Zero third-party requests **as shipped** — this stops being true the moment
+  `addressAutocomplete` gets a key or proxy URL (see "Address field"). Fonts are
+  self-hosted latin subsets; the two used above the fold (IBM Plex Sans 400,
+  Archivo 800) are preloaded, and all seven carry `font-display:swap`.
 - The one real photo ships as AVIF (42 KB) with WebP (44 KB) and JPEG (49 KB)
   fallbacks, pre-cropped to the aspect the slot actually displays. It was a
   646 KB PNG before — a 93% cut, and it was 98% of total page weight.
@@ -126,6 +128,58 @@ All prototype "props" are the `CONFIG` object at the top of `app.js`:
   Texas rules generally require an electrical contractor's licence number in
   advertising — confirm with whoever handles TDLR compliance whether this page
   is covered before running paid traffic to it.
+
+## Address field
+
+Step 1 asks for the **property address**, not a ZIP code. Service-area gating
+still runs on a 5-digit ZIP, which now comes from one of two places: the
+`postal_code` component of a suggestion the visitor picked, or — when they type
+the address by hand — the last 5-digit group in the text. An address with no ZIP
+in it is rejected with "Include your ZIP code so we can check your service
+area," so `excludedZips` / `servicePrefixes` keep working exactly as before.
+
+The lead payload gained `address`, `city`, `state` and `addressSource`
+(`'suggestion'` or `'typed'`, so you can tell a verified address from a
+hand-keyed one). `zip` is unchanged and still populated.
+
+**Suggestions are switched off in the shipped config, and turning them on is not
+just a config change — read the next paragraph first.** With neither `proxyUrl`
+nor `apiKey` set, the field is a plain address box, the page makes no outside
+request, and everything above still works. Set either one and it starts
+suggesting.
+
+- **This sends what the visitor types to Google.** `privacy.html` does not
+  describe an address-autocomplete provider, and the owner handoff (section 4,
+  "Privacy assumptions to check") is explicit that the notice must be updated
+  *before* such a tool is enabled. Ship the policy change in the same commit
+  that sets the key. Wording that covers it, to add as a paragraph after the
+  first one in `privacy.html` (and bump the "Last updated" date):
+
+  > When you type your property address, what you type is sent to Google's
+  > Places service to suggest matching addresses. Google processes this under
+  > its own privacy policy.
+
+- **Prefer `proxyUrl` over `apiKey`.** `proxyUrl` points at an endpoint on your
+  own backend that forwards to Places API (New) and returns its JSON unchanged;
+  the key stays server-side, which is what the handoff asks for. A browser
+  `apiKey` is visible to anyone who views source, so it must be
+  HTTP-referrer-restricted to `powerlessutility.com` and given a spend cap —
+  otherwise it will be scraped and billed to you.
+- **It costs money per session.** Requests carry a `sessionToken` that groups
+  the keystrokes and the one details call into a single billable autocomplete
+  session, which is the cheaper of Google's two billing models. Requests are
+  debounced 250ms and suppressed under 4 characters.
+- **No Google script tag.** It talks to Places API (New) over `fetch`, so the
+  page still loads zero third-party *code*; with a key set it does make
+  third-party *requests*, which the performance note below no longer covers.
+- **Every failure degrades quietly**: quota exhausted, blocked, offline, or a
+  bad key means no dropdown and no error message — the visitor types the
+  address and the ZIP is parsed out of it.
+
+Keyboard and screen-reader behaviour: the input is a `combobox` with an
+`aria-activedescendant` pointing at the highlighted `option`; arrow keys move
+and wrap, Enter selects, Escape closes. Options are 44px minimum, and the list
+nudges the page up if it would open past the bottom of a phone screen.
 
 ## Consent and enquiry data
 

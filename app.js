@@ -24,7 +24,26 @@
     leadEndpoint: null,
     // Bump this whenever CONSENT_DISCLOSURE_HTML changes, so an existing consent
     // record still identifies the exact wording that visitor was shown.
-    consentVersion: '2026-09-09.1'
+    consentVersion: '2026-09-09.1',
+    /* Address autocomplete. Dormant until one of proxyUrl / apiKey is set: with
+       neither, the field is a plain address box that makes no outside request
+       and the ZIP is read out of what the visitor types, so service-area gating
+       still works.
+
+       Turning it on sends every keystroke of the visitor's address to Google.
+       The published privacy notice does not describe that yet — update
+       privacy.html in the SAME change that sets a key (IMPLEMENTATION.md has the
+       wording ready), or the page collects through a provider it never disclosed.
+
+       proxyUrl is the better of the two: point it at an endpoint on your own
+       backend that forwards to Places API (New) and returns its JSON unchanged,
+       and the key never reaches the browser. A browser apiKey must be
+       HTTP-referrer restricted to powerlessutility.com and capped for spend. */
+    addressAutocomplete: {
+      proxyUrl: '',
+      apiKey: '',
+      country: 'us'
+    }
   };
 
   /* The consent disclosure, shown immediately above the submit button and stored
@@ -67,18 +86,20 @@
   var ROOF_OPTS = ['0–10 yrs', '10–20 yrs', '20+ yrs', 'Not sure'];
   var TIME_OPTS = ['ASAP', '1–3 months', '3–6 months', 'Just researching'];
 
-  var PERSIST_KEYS = ['step', 'dq', 'bill', 'zip', 'homeowner', 'shade', 'roofAge', 'timeline', 'needsReview'];
+  var PERSIST_KEYS = ['step', 'dq', 'bill', 'address', 'zip', 'city', 'stateCode', 'addressSource',
+    'homeowner', 'shade', 'roofAge', 'timeline', 'needsReview'];
   var STORAGE_KEY = 'pu_lead_form';
   var MOBILE_MAX = 900;
 
   /* ------------------------------------------------------------------
-     State — tap answers and ZIP persist for the session.
+     State — tap answers and the property address persist for the session.
      Name / phone / email / consent are NEVER persisted (fresh consent
      is collected every time).
      ------------------------------------------------------------------ */
   var state = {
     step: 1, dq: null, done: false, needsReview: '',
-    bill: null, zip: '', homeowner: null, shade: null, roofAge: null, timeline: null,
+    bill: null, homeowner: null, shade: null, roofAge: null, timeline: null,
+    address: '', zip: '', city: '', stateCode: '', addressSource: '',
     name: '', phone: '', email: '', consent: false,
     errors: {}, submitting: false,
     exitOpen: false, exitEmail: '', exitDone: false, errExit: ''
@@ -146,11 +167,28 @@
     return d;
   }
 
+  function uuid() {
+    return (window.crypto && crypto.randomUUID)
+      ? crypto.randomUUID()
+      : String(Date.now()) + Math.random().toString(16).slice(2);
+  }
+
+  // Service-area gating still runs on a 5-digit ZIP, so pull the last one out of
+  // whatever the visitor typed when no suggestion supplied it.
+  function zipFromText(v) {
+    var found = String(v || '').match(/\b\d{5}\b/g);
+    return found ? found[found.length - 1] : '';
+  }
+
   var validate = {
     name: function (v) { return v.trim().length >= 2 ? '' : 'Please enter your full name.'; },
     phone: function (v) { return v.replace(/\D/g, '').length === 10 ? '' : 'Enter a valid 10-digit phone number.'; },
     email: function (v) { return /^\S+@\S+\.\S+$/.test(v.trim()) ? '' : 'Enter a valid email address.'; },
-    zip: function (v) { return /^\d{5}$/.test(v) ? '' : 'Enter a 5-digit ZIP code.'; }
+    address: function (v) {
+      if (String(v || '').trim().length < 6) return 'Enter your property address.';
+      if (!zipFromText(v) && !state.zip) return 'Include your ZIP code so we can check your service area.';
+      return '';
+    }
   };
 
   // Updates the error message in place so re-rendering never steals focus
@@ -190,6 +228,222 @@
       if (f) f.focus({ preventScroll: true });
     }, 650);
   }
+
+  /* ------------------------------------------------------------------
+     Address autocomplete.
+
+     Talks to Places API (New) over plain fetch — no Google script tag, so the
+     page still loads zero third-party code. With neither proxyUrl nor apiKey
+     set nothing leaves the browser and the field degrades to a plain address
+     box. Every request failure degrades the same way: no list, typed address
+     still accepted.
+     ------------------------------------------------------------------ */
+
+  var AC_MIN_CHARS = 4;
+  var AC_DEBOUNCE_MS = 250;
+  var AC_MAX_ITEMS = 5;
+  var GOOGLE_SUGGEST_URL = 'https://places.googleapis.com/v1/places:autocomplete';
+  var GOOGLE_DETAILS_URL = 'https://places.googleapis.com/v1/places/';
+
+  // sessionToken groups keystrokes + the details call into one billable session.
+  var ac = { items: [], active: -1, token: uuid(), timer: null, ctrl: null, seq: 0 };
+
+  function acCfg() { return CONFIG.addressAutocomplete || {}; }
+  function acEnabled() { var c = acCfg(); return !!(c.proxyUrl || c.apiKey); }
+
+  function acUrl(op, query) {
+    var c = acCfg();
+    if (c.proxyUrl) return c.proxyUrl + (c.proxyUrl.indexOf('?') === -1 ? '?' : '&') + 'op=' + op + (query || '');
+    return op === 'suggest' ? GOOGLE_SUGGEST_URL : GOOGLE_DETAILS_URL;
+  }
+
+  function acHeaders(fieldMask) {
+    var c = acCfg();
+    var h = {};
+    if (!c.proxyUrl && c.apiKey) {
+      h['X-Goog-Api-Key'] = c.apiKey;
+      if (fieldMask) h['X-Goog-FieldMask'] = fieldMask;
+    }
+    return h;
+  }
+
+  function acFetchSuggestions(query) {
+    var c = acCfg();
+    var headers = acHeaders();
+    headers['Content-Type'] = 'application/json';
+    if (ac.ctrl) { try { ac.ctrl.abort(); } catch (e) {} }
+    ac.ctrl = ('AbortController' in window) ? new AbortController() : null;
+    return fetch(acUrl('suggest'), {
+      method: 'POST',
+      headers: headers,
+      signal: ac.ctrl ? ac.ctrl.signal : undefined,
+      body: JSON.stringify({
+        input: query,
+        sessionToken: ac.token,
+        includedRegionCodes: [c.country || 'us'],
+        includedPrimaryTypes: ['street_address', 'premise', 'subpremise']
+      })
+    }).then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)); });
+  }
+
+  function acFetchDetails(placeId) {
+    var c = acCfg();
+    var url = c.proxyUrl
+      ? acUrl('details', '&placeId=' + encodeURIComponent(placeId) + '&sessionToken=' + encodeURIComponent(ac.token))
+      : GOOGLE_DETAILS_URL + encodeURIComponent(placeId) + '?sessionToken=' + encodeURIComponent(ac.token);
+    return fetch(url, { headers: acHeaders('formattedAddress,addressComponents') })
+      .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)); });
+  }
+
+  function acParse(json) {
+    var out = [];
+    (((json || {}).suggestions) || []).forEach(function (row) {
+      var p = row.placePrediction;
+      if (!p || !p.placeId) return;
+      var sf = p.structuredFormat || {};
+      out.push({
+        id: p.placeId,
+        full: (p.text && p.text.text) || '',
+        primary: (sf.mainText && sf.mainText.text) || (p.text && p.text.text) || '',
+        secondary: (sf.secondaryText && sf.secondaryText.text) || ''
+      });
+    });
+    return out.slice(0, AC_MAX_ITEMS);
+  }
+
+  function acComponents(json) {
+    var out = { formatted: (json && json.formattedAddress) || '', zip: '', city: '', state: '' };
+    (((json || {}).addressComponents) || []).forEach(function (c) {
+      var t = c.types || [];
+      if (t.indexOf('postal_code') !== -1) out.zip = String(c.longText || c.shortText || '').slice(0, 5);
+      else if (t.indexOf('locality') !== -1) out.city = c.longText || c.shortText || '';
+      else if (t.indexOf('administrative_area_level_1') !== -1) out.state = c.shortText || '';
+    });
+    return out;
+  }
+
+  function acInput() { return els.formBody.querySelector('#pu-address'); }
+
+  function acPaint() {
+    var list = els.formBody.querySelector('#pu-address-list');
+    var input = acInput();
+    if (!list || !input) return;
+    if (!ac.items.length) {
+      list.hidden = true;
+      list.innerHTML = '';
+      input.setAttribute('aria-expanded', 'false');
+      input.removeAttribute('aria-activedescendant');
+      return;
+    }
+    list.innerHTML = ac.items.map(function (it, i) {
+      return '<li class="ac-opt" id="pu-ac-' + i + '" role="option" data-ac-opt="' + i + '" ' +
+        'aria-selected="' + (i === ac.active) + '">' +
+        '<span class="ac-primary">' + esc(it.primary) + '</span>' +
+        (it.secondary ? '<span class="ac-secondary">' + esc(it.secondary) + '</span>' : '') +
+        '</li>';
+    }).join('');
+    list.hidden = false;
+    // On a phone the card can sit low enough that the list opens past the fold.
+    // Nudge the page just far enough that the whole list is reachable; once it
+    // fits, the overshoot goes non-positive and this stops firing.
+    var overshoot = list.getBoundingClientRect().bottom - (window.innerHeight - 8);
+    if (overshoot > 0) window.scrollBy(0, overshoot);
+    input.setAttribute('aria-expanded', 'true');
+    if (ac.active >= 0) input.setAttribute('aria-activedescendant', 'pu-ac-' + ac.active);
+    else input.removeAttribute('aria-activedescendant');
+  }
+
+  function acClose() {
+    ac.items = [];
+    ac.active = -1;
+    if (ac.timer) { clearTimeout(ac.timer); ac.timer = null; }
+    acPaint();
+  }
+
+  function acQuery(text) {
+    if (!acEnabled()) return;
+    var q = String(text || '').trim();
+    if (ac.timer) clearTimeout(ac.timer);
+    if (q.length < AC_MIN_CHARS) { acClose(); return; }
+    ac.timer = setTimeout(function () {
+      var seq = ++ac.seq;
+      acFetchSuggestions(q).then(function (json) {
+        if (seq !== ac.seq) return;              // a newer keystroke won
+        ac.items = acParse(json);
+        ac.active = -1;
+        acPaint();
+      }).catch(function () { /* offline, blocked, over quota — just no list */ });
+    }, AC_DEBOUNCE_MS);
+  }
+
+  function acSelect(i) {
+    var it = ac.items[i];
+    if (!it) return;
+    var input = acInput();
+    state.address = it.full || (it.primary + (it.secondary ? ', ' + it.secondary : ''));
+    state.addressSource = 'suggestion';
+    state.zip = zipFromText(state.address);
+    if (input) input.value = state.address;
+    acClose();
+    setErr('address', '');
+    writeSession();
+
+    acFetchDetails(it.id).then(function (json) {
+      var parts = acComponents(json);
+      if (parts.formatted) {
+        state.address = parts.formatted;
+        var live = acInput();
+        if (live) live.value = parts.formatted;
+      }
+      state.zip = parts.zip || zipFromText(state.address);
+      state.city = parts.city;
+      state.stateCode = parts.state;
+      setErr('address', validate.address(state.address));
+      writeSession();
+    }).catch(function () {
+      // Keep the prediction text; the ZIP parsed out of it still gates.
+    }).then(function () {
+      ac.token = uuid();                          // details call closes the session
+    });
+  }
+
+  function acKeydown(e) {
+    if (!ac.items.length) {
+      if (e.key === 'Escape') acClose();
+      return;
+    }
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      var step = e.key === 'ArrowDown' ? 1 : -1;
+      ac.active = (ac.active + step + ac.items.length + 1) % (ac.items.length + 1);
+      if (ac.active === ac.items.length) ac.active = -1;
+      acPaint();
+    } else if (e.key === 'Enter') {
+      if (ac.active >= 0) { e.preventDefault(); acSelect(ac.active); }
+      else acClose();
+    } else if (e.key === 'Escape') {
+      acClose();
+    }
+  }
+
+  els.formBody.addEventListener('keydown', function (e) {
+    if (e.target.id === 'pu-address') acKeydown(e);
+  });
+
+  // Keep focus in the input so choosing an option never fires blur-validation
+  // against the half-typed value underneath it.
+  els.formBody.addEventListener('mousedown', function (e) {
+    if (e.target.closest('#pu-address-list')) e.preventDefault();
+  });
+
+  els.formBody.addEventListener('click', function (e) {
+    var opt = e.target.closest('[data-ac-opt]');
+    if (opt) acSelect(parseInt(opt.getAttribute('data-ac-opt'), 10));
+  });
+
+  els.formBody.addEventListener('focusout', function (e) {
+    if (e.target.id === 'pu-address') setTimeout(acClose, 0);
+  });
 
   /* ---------------------------- rendering ---------------------------- */
 
@@ -232,10 +486,19 @@
       '<p class="field-label" id="lbl-bill">Average monthly electric bill</p>' +
       optGroup('bill', 'lbl-bill', BILL_OPTS, state.bill, 2) +
       errBlock('bill') +
-      '<label class="input-label spaced" for="pu-zip">ZIP code</label>' +
-      '<input id="pu-zip" class="text-input mono" type="text" inputmode="numeric" autocomplete="postal-code" ' +
-        'placeholder="77002" value="' + esc(state.zip) + '" data-field="zip">' +
-      errBlock('zip') +
+      '<label class="input-label spaced" for="pu-address">Property address</label>' +
+      '<div class="ac">' +
+        '<input id="pu-address" class="text-input" type="text" autocomplete="off" autocapitalize="words" ' +
+          'spellcheck="false" role="combobox" aria-expanded="false" aria-controls="pu-address-list" ' +
+          'aria-autocomplete="list" aria-describedby="pu-address-hint" ' +
+          'placeholder="1420 Oak Ridge Dr, Houston, TX 77002" ' +
+          'value="' + esc(state.address) + '" data-field="address">' +
+        '<ul class="ac-list" id="pu-address-list" role="listbox" aria-label="Address suggestions" hidden></ul>' +
+      '</div>' +
+      errBlock('address') +
+      '<p class="hint" id="pu-address-hint">' + (acEnabled()
+        ? 'Start typing and pick your address from the list.'
+        : 'Street, city, state and ZIP.') + '</p>' +
       '<p class="field-label spaced" id="lbl-own">Do you own this home?</p>' +
       optGroup('homeowner', 'lbl-own', OWN_OPTS, state.homeowner, 2, 'opt-word opt-own') +
       errBlock('homeowner') +
@@ -313,11 +576,11 @@
     },
     coop: {
       h: 'Not available in your area yet',
-      p: 'Your ZIP code sits in an electric cooperative territory where we cannot currently install. This changes as agreements are signed, so it is worth checking back.'
+      p: 'Your address sits in an electric cooperative territory where we cannot currently install. This changes as agreements are signed, so it is worth checking back.'
     },
     out: {
       h: 'Outside our service area',
-      p: 'We currently install around Houston, and your ZIP code falls outside that. We are expanding, so this may change.'
+      p: 'We currently install around Houston, and your address falls outside that. We are expanding, so this may change.'
     }
   };
 
@@ -381,15 +644,17 @@
   }
 
   function continue1() {
+    if (!state.zip) state.zip = zipFromText(state.address);
+
     var errs = {
       bill: state.bill ? '' : 'Select your average monthly bill.',
-      zip: validate.zip(state.zip),
+      address: validate.address(state.address),
       homeowner: state.homeowner ? '' : 'Please select one.'
     };
     Object.keys(errs).forEach(function (k) { setErr(k, errs[k]); });
-    announce(errs.bill || errs.zip || errs.homeowner || '');
+    announce(errs.bill || errs.address || errs.homeowner || '');
 
-    var first = errs.bill ? '[data-group="bill"]' : errs.zip ? '#pu-zip' : errs.homeowner ? '[data-group="homeowner"]' : null;
+    var first = errs.bill ? '[data-group="bill"]' : errs.address ? '#pu-address' : errs.homeowner ? '[data-group="homeowner"]' : null;
     if (first) { focusFirstError(first); return; }
 
     // Gating — evaluated before step 2 is shown.
@@ -436,9 +701,7 @@
     state.submitting = true;
     setSubmitLabel();
 
-    var eventId = (window.crypto && crypto.randomUUID)
-      ? crypto.randomUUID()
-      : String(Date.now()) + Math.random().toString(16).slice(2);
+    var eventId = uuid();
 
     var now = new Date();
     var timeZone = '';
@@ -450,7 +713,12 @@
       name: state.name,
       email: state.email,
       phone: '+1' + state.phone.replace(/\D/g, ''),
+      address: state.address,
+      city: state.city,
+      state: state.stateCode,
       zip: state.zip,
+      // 'suggestion' = picked from the autocomplete list, 'typed' = keyed in by hand.
+      addressSource: state.addressSource,
       homeowner: state.homeowner,
       bill: state.bill,
       shade: state.shade,
@@ -518,7 +786,8 @@
   function startNew() {
     Object.assign(state, {
       step: 1, done: false, dq: null, needsReview: '',
-      bill: null, zip: '', homeowner: null, shade: null, roofAge: null, timeline: null,
+      bill: null, homeowner: null, shade: null, roofAge: null, timeline: null,
+      address: '', zip: '', city: '', stateCode: '', addressSource: '',
       name: '', phone: '', email: '', consent: false, errors: {}
     });
     if (els.live) els.live.textContent = '';
@@ -557,10 +826,16 @@
   els.formBody.addEventListener('input', function (e) {
     var field = e.target.getAttribute('data-field');
     if (!field) return;
-    if (field === 'zip') {
+    if (field === 'address') {
       firstStart();
-      state.zip = e.target.value.replace(/\D/g, '').slice(0, 5);
-      if (e.target.value !== state.zip) e.target.value = state.zip;
+      state.address = e.target.value;
+      state.addressSource = 'typed';
+      // Typed edits re-derive the ZIP; a suggestion overwrites it on selection.
+      state.zip = zipFromText(state.address);
+      state.city = '';
+      state.stateCode = '';
+      if (!validate.address(state.address)) setErr('address', '');
+      acQuery(state.address);
       writeSession();
     } else if (field === 'phone') {
       var start = e.target.selectionStart;
