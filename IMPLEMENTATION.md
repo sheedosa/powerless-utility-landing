@@ -7,6 +7,8 @@ Built from the Claude Design handoff in `project/Powerless Utility Landing.dc.ht
   and `/terms.html`; they carry the site header, footer and typography and
   nothing but the approved policy text in between
 - `styles.css` — `@font-face` rules + all styling, tokens in `:root`
+- `tools/google-sheets-backend.gs` — the Apps Script that receives submissions
+  and writes them into a Google Sheet; setup steps are at the top of the file
 - `app.js` — 3-step wizard, validation, gating, tracking, sticky CTA, exit-intent modal
 - `assets/reason-bill.{avif,webp,jpg}` — the one real photo from the prototype, served
   via `<picture>`; `reason-bill.png` is the untouched master, not referenced by the page
@@ -32,7 +34,10 @@ All prototype "props" are the `CONFIG` object at the top of `app.js`:
 | `stickyCta` | `true` | Mobile sticky bottom CTA |
 | `exitIntent` | `true` | Desktop exit-intent email capture, once per session |
 | `excludedZips` / `servicePrefixes` | Houston sample data | **Placeholder** — replace with the real service-area lists |
-| `leadEndpoint` | `null` | When set, the lead is POSTed as JSON; when `null` it is logged and the success state is simulated |
+| `leadEndpoint` | `null` | Where submissions go. The Apps Script `/exec` URL for the Google Sheet; `null` logs to the console and simulates success |
+| `leadEndpointFormat` | `'text'` | `'text'` posts as `text/plain` (required by Apps Script); `'json'` for a normal API |
+| `leadToken` | `''` | Shared string the receiving script checks. Must match `SHARED_TOKEN` in the Apps Script |
+| `logDisqualified` | `true` | Also record visitors the gating turns away, so the sheet shows the whole funnel |
 | `consentVersion` | `'2026-09-09.1'` | Stored with every consent record; bump it whenever `CONSENT_DISCLOSURE_HTML` changes |
 | `addressAutocomplete` | `{proxyUrl:'', apiKey:'', country:'us'}` | Address suggestions. **Off** until `proxyUrl` or `apiKey` is set — see "Address field" |
 
@@ -191,6 +196,48 @@ Keyboard and screen-reader behaviour: the input is a `combobox` with an
 `aria-activedescendant` pointing at the highlighted `option`; arrow keys move
 and wrap, Enter selects, Escape closes. Options are 44px minimum, and the list
 nudges the page up if it would open past the bottom of a phone screen.
+
+## Google Sheets backend
+
+`tools/google-sheets-backend.gs` is an Apps Script web app that writes every
+submission into a Google Sheet. Setup steps are in the header of that file; the
+short version is paste it into the sheet's Apps Script editor, set
+`SHARED_TOKEN`, deploy as a web app, then put the `/exec` URL in
+`CONFIG.leadEndpoint` and the same token in `CONFIG.leadToken`.
+
+It builds and formats the sheet itself on first submission:
+
+| Tab | Holds |
+| --- | --- |
+| `Leads` | Everyone who completed the form — `Qualified`, or `Needs review` when the ZIP is outside `servicePrefixes`. Full contact details and consent evidence. |
+| `Unqualified` | Everyone the gating turned away, with the reason. No contact columns: the funnel stops before those are asked for. |
+| `Summary` | Live counts and a completion rate, written as formulas so hand-edits to the rows stay reflected. |
+| `Errors` | Only appears if a write ever throws — keeps the raw body so nothing is lost. |
+
+Things worth knowing before relying on it:
+
+- **Why `text/plain`.** An `application/json` POST triggers a CORS preflight
+  that Apps Script does not answer, and the submission fails. `leadEndpointFormat`
+  defaults to `'text'` for that reason; the body is still JSON. Switch to
+  `'json'` only for a backend that handles preflight.
+- **The token is a speed bump, not a secret.** It sits in `app.js` where anyone
+  can read it. It stops a stranger who finds the `/exec` URL from filling the
+  sheet with junk; it does not stop someone who reads the page source. If that
+  matters, put a real backend in front instead.
+- **Submissions are de-duplicated** on `eventId`, so a visitor who retries after
+  a failed delivery produces one row, not two.
+- **Re-deploy after editing the script.** Deploy → Manage deployments → edit →
+  Version: New version. Without that, the live URL keeps running the old code.
+- **Disqualified rows carry no consent**, because those visitors were never
+  asked for contact details. They are funnel data, not marketing contacts — do
+  not call or text anyone from the `Unqualified` tab.
+- **What is not captured:** people who abandon the form part-way. Their
+  half-entered details are never sent anywhere, which is deliberate.
+- **The privacy notice says IP addresses are recorded, and this backend does not
+  record them.** The browser cannot read its own IP, and Apps Script does not
+  expose the caller's. So either drop "IP address" from `privacy.html`, or put a
+  real endpoint in front that logs it. Right now the notice claims slightly more
+  collection than actually happens — harmless in direction, but it should match.
 
 ## Consent and enquiry data
 

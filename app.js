@@ -18,10 +18,21 @@
     // Replace with the real service-area data before launch.
     excludedZips: ['77327', '77328', '77331', '77335', '77350', '77351', '77360', '77364', '77371'],
     servicePrefixes: ['770', '771', '772', '773', '774', '775'],
-    // Production: point this at the CRM endpoint. null = log only.
-    // Confirm the real destination with the owner before wiring it up, and keep
-    // any credentials server-side — never in this file.
+    /* Where submissions go. null = log to the console only.
+       For the Google Sheet backend this is the Apps Script web-app /exec URL
+       (see tools/google-sheets-backend.gs). */
     leadEndpoint: null,
+    /* 'text' posts the JSON body as text/plain. Apps Script needs that: an
+       application/json POST triggers a CORS preflight it does not answer, and
+       the submission fails. Use 'json' for a normal API. */
+    leadEndpointFormat: 'text',
+    /* Shared string the receiving script checks before it writes a row. It is
+       visible in this file, so it is a speed bump against drive-by bots, not a
+       secret — it keeps a stranger who finds the URL from filling the sheet
+       with junk. Must match SHARED_TOKEN in the Apps Script. */
+    leadToken: '',
+    // Log visitors the funnel turns away, so the sheet shows the whole picture.
+    logDisqualified: true,
     // Bump this whenever CONSENT_DISCLOSURE_HTML changes, so an existing consent
     // record still identifies the exact wording that visitor was shown.
     consentVersion: '2026-09-09.1',
@@ -574,6 +585,107 @@
         'Your info stays private — used only for your solar consult.</p>';
   }
 
+  /* ------------------------------------------------------------------
+     Funnel reporting — one payload shape for both a completed enquiry and a
+     visitor the gating turned away, so every row in the sheet lines up.
+     ------------------------------------------------------------------ */
+
+  var DQ_REASON = {
+    renter: 'Renter — does not own the home',
+    coop: 'Electric co-op territory',
+    out: 'Outside service area'
+  };
+
+  function funnelPayload(kind, eventId) {
+    var now = new Date();
+    var timeZone = '';
+    try { timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) {}
+    var qualified = kind === 'lead';
+
+    return {
+      token: CONFIG.leadToken || '',
+      type: qualified ? 'lead' : 'disqualified',
+      // Drives which tab the row lands on and how it is colour-coded.
+      status: qualified ? (state.needsReview === 'REVIEW' ? 'Needs review' : 'Qualified') : 'Unqualified',
+      reason: qualified ? '' : (DQ_REASON[state.dq] || state.dq || ''),
+      submittedAt: now.toISOString(),
+      timeZone: timeZone,
+      utcOffsetMinutes: -now.getTimezoneOffset(),
+      needsReview: state.needsReview,
+      // Blank on a disqualified row — the funnel stops before we ask for these.
+      name: qualified ? state.name : '',
+      email: qualified ? state.email : '',
+      phone: qualified ? '+1' + state.phone.replace(/\D/g, '') : '',
+      address: state.address,
+      city: state.city,
+      state: state.stateCode,
+      zip: state.zip,
+      // 'suggestion' = picked from the autocomplete list, 'typed' = keyed in by hand.
+      addressSource: state.addressSource,
+      homeowner: state.homeowner,
+      bill: state.bill,
+      shade: state.shade,
+      roofAge: state.roofAge,
+      timeline: state.timeline,
+      consent: qualified ? state.consent : false,
+      /* Consent evidence kept with the enquiry: the box state, the exact wording
+         shown, its version, the submission time with timezone, and the page the
+         form was submitted from. The submitting IP address cannot be read from
+         the browser; see IMPLEMENTATION.md on what that means for the notice. */
+      consentRecord: qualified ? {
+        given: state.consent,
+        version: CONFIG.consentVersion,
+        disclosure: consentDisclosureText(),
+        submittedAt: now.toISOString(),
+        timeZone: timeZone,
+        utcOffsetMinutes: -now.getTimezoneOffset(),
+        pageUrl: location.href
+      } : null,
+      fbclid: tracking.utm.fbclid || '',
+      utmSource: tracking.utm.utmSource || '',
+      utmMedium: tracking.utm.utmMedium || '',
+      utmCampaign: tracking.utm.utmCampaign || '',
+      utmContent: tracking.utm.utmContent || '',
+      utmTerm: tracking.utm.utmTerm || '',
+      referrer: tracking.referrer,
+      landingPage: tracking.landingPage,
+      eventId: eventId || uuid()
+    };
+  }
+
+  function postFunnel(payload, opts) {
+    opts = opts || {};
+    if (!CONFIG.leadEndpoint) {
+      console.log(payload.type, payload);
+      if (opts.onSuccess) setTimeout(opts.onSuccess, 700);
+      return;
+    }
+    var asText = CONFIG.leadEndpointFormat !== 'json';
+    fetch(CONFIG.leadEndpoint, {
+      method: 'POST',
+      // text/plain keeps this a "simple" request, so no preflight is sent.
+      headers: { 'Content-Type': asText ? 'text/plain;charset=utf-8' : 'application/json' },
+      body: JSON.stringify(payload),
+      keepalive: !!opts.keepalive
+    }).then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      if (opts.onSuccess) opts.onSuccess();
+    }).catch(function (err) {
+      if (opts.onFailure) opts.onFailure(err);
+    });
+  }
+
+  // A visitor the gating turns away: record the row, then show them the reason.
+  function disqualify(reason, event) {
+    state.dq = reason;
+    track(event);
+    if (CONFIG.logDisqualified) {
+      // Fire and forget — nothing about their screen depends on it.
+      postFunnel(funnelPayload('disqualified'), { keepalive: true });
+    }
+    render();
+  }
+
   var DQ_COPY = {
     renter: {
       h: 'We need the property owner',
@@ -663,11 +775,11 @@
     if (first) { focusFirstError(first); return; }
 
     // Gating — evaluated before step 2 is shown.
-    if (state.homeowner === 'No') { state.dq = 'renter'; track('dq_renter'); render(); return; }
-    if (CONFIG.excludedZips.indexOf(state.zip) !== -1) { state.dq = 'coop'; track('dq_coop'); render(); return; }
+    if (state.homeowner === 'No') { disqualify('renter', 'dq_renter'); return; }
+    if (CONFIG.excludedZips.indexOf(state.zip) !== -1) { disqualify('coop', 'dq_coop'); return; }
 
     var inArea = CONFIG.servicePrefixes.indexOf(state.zip.slice(0, 3)) !== -1;
-    if (!inArea && CONFIG.strictZipGating) { state.dq = 'out'; track('dq_out_of_area'); render(); return; }
+    if (!inArea && CONFIG.strictZipGating) { disqualify('out', 'dq_out_of_area'); return; }
 
     state.needsReview = inArea ? '' : 'REVIEW';
     goToStep(2);
@@ -707,53 +819,7 @@
     setSubmitLabel();
 
     var eventId = uuid();
-
-    var now = new Date();
-    var timeZone = '';
-    try { timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) {}
-
-    var lead = {
-      submittedAt: now.toISOString(),
-      needsReview: state.needsReview,
-      name: state.name,
-      email: state.email,
-      phone: '+1' + state.phone.replace(/\D/g, ''),
-      address: state.address,
-      city: state.city,
-      state: state.stateCode,
-      zip: state.zip,
-      // 'suggestion' = picked from the autocomplete list, 'typed' = keyed in by hand.
-      addressSource: state.addressSource,
-      homeowner: state.homeowner,
-      bill: state.bill,
-      shade: state.shade,
-      roofAge: state.roofAge,
-      timeline: state.timeline,
-      consent: state.consent,
-      /* Consent evidence kept with the enquiry: the box state, the exact wording
-         shown, its version, the submission time with timezone, and the page the
-         form was submitted from. The submitting IP address has to be recorded
-         server-side — it cannot be read from the browser — and the published
-         privacy notice covers collecting it. */
-      consentRecord: {
-        given: state.consent,
-        version: CONFIG.consentVersion,
-        disclosure: consentDisclosureText(),
-        submittedAt: now.toISOString(),
-        timeZone: timeZone,
-        utcOffsetMinutes: -now.getTimezoneOffset(),
-        pageUrl: location.href
-      },
-      fbclid: tracking.utm.fbclid || '',
-      utmSource: tracking.utm.utmSource || '',
-      utmMedium: tracking.utm.utmMedium || '',
-      utmCampaign: tracking.utm.utmCampaign || '',
-      utmContent: tracking.utm.utmContent || '',
-      utmTerm: tracking.utm.utmTerm || '',
-      referrer: tracking.referrer,
-      landingPage: tracking.landingPage,
-      eventId: eventId
-    };
+    var lead = funnelPayload('lead', eventId);
 
     function onSuccess() {
       track('lead_submitted', { eventId: eventId });
@@ -770,17 +836,7 @@
       setErr('submit', 'Something went wrong sending your request. Please try again.');
     }
 
-    if (CONFIG.leadEndpoint) {
-      fetch(CONFIG.leadEndpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(lead)
-      }).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); onSuccess(); })
-        .catch(onFailure);
-    } else {
-      console.log('lead', lead);
-      setTimeout(onSuccess, 700);
-    }
+    postFunnel(lead, { onSuccess: onSuccess, onFailure: onFailure });
   }
 
   function startOver() {
