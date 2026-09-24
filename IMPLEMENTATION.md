@@ -144,9 +144,20 @@ hand-keyed one). `zip` is unchanged and still populated.
 
 **Suggestions are switched off in the shipped config, and turning them on is not
 just a config change — read the next paragraph first.** With neither `proxyUrl`
-nor `apiKey` set, the field is a plain address box, the page makes no outside
-request, and everything above still works. Set either one and it starts
-suggesting.
+nor `apiKey` set, the field carries `autocomplete="street-address"`, which hands
+it to the browser's own address autofill: free, impossible to throttle, and
+nothing leaves the visitor's device, so it needs no privacy disclosure. It only
+helps visitors who already have an address saved in their browser, but on mobile
+that is a large share of them, and it is the only suggestion mechanism here with
+no service behind it. Setting a key or proxy flips the attribute to `off` so the
+native dropdown and ours cannot stack on top of each other.
+
+Two keyless services were considered and rejected as the default: the public
+Nominatim instance forbids autocomplete use outright, and Photon (Komoot) allows
+it but throttles or bans heavy use, offers no uptime guarantee, and inherits
+OpenStreetMap's patchy US house-number coverage. A free-tier key from a
+commercial provider is steadier than either if suggestions for *everyone* are
+wanted.
 
 - **This sends what the visitor types to Google.** `privacy.html` does not
   describe an address-autocomplete provider, and the owner handoff (section 4,

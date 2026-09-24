@@ -488,7 +488,12 @@
       errBlock('bill') +
       '<label class="input-label spaced" for="pu-address">Property address</label>' +
       '<div class="ac">' +
-        '<input id="pu-address" class="text-input" type="text" autocomplete="off" autocapitalize="words" ' +
+        /* With no suggestion provider, hand the field to the browser's own
+           address autofill: it costs nothing, is throttle-proof, and never
+           leaves the visitor's device. Suppress it only when our own list is
+           live, so the two dropdowns cannot stack on top of each other. */
+        '<input id="pu-address" class="text-input" type="text" ' +
+        'autocomplete="' + (acEnabled() ? 'off' : 'street-address') + '" autocapitalize="words" ' +
           'spellcheck="false" role="combobox" aria-expanded="false" aria-controls="pu-address-list" ' +
           'aria-autocomplete="list" aria-describedby="pu-address-hint" ' +
           'placeholder="1420 Oak Ridge Dr, Houston, TX 77002" ' +
