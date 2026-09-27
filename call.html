@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Call — Powerless Utility</title>
+<!-- Tap-to-call bridge for the leads sheet. Google Sheets will not open a
+     tel: link directly, so the sheet links here and this page opens the
+     dialler. The number rides in the URL fragment (#18328847302), which the
+     browser never sends to the server, so it is not logged anywhere. -->
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#00A0DF">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="styles.css">
+<style>
+  .call-wrap{min-height:70vh;display:flex;align-items:center;justify-content:center;padding:32px 20px}
+  .call-card{width:100%;max-width:420px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:28px 24px;text-align:center}
+  .call-label{font-family:var(--mono);font-weight:600;font-size:13px;letter-spacing:.08em;color:var(--muted);margin:0 0 10px}
+  .call-number{font-family:var(--display);font-weight:800;font-size:clamp(28px,8vw,36px);letter-spacing:-0.01em;margin:0 0 20px;color:var(--ink);word-break:break-all}
+  .call-btn{display:block;width:100%;min-height:60px;line-height:60px;border-radius:8px;background:var(--brand);color:#FFFFFF;font-weight:600;font-size:19px;text-decoration:none}
+  .call-btn:hover{background:#0092CB;color:#FFFFFF}
+  .call-hint{font-size:13px;color:var(--muted);margin:14px 0 0}
+  .call-err{color:var(--error);font-size:15px;margin:0}
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <a class="brand brand-home" href="index.html">
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="4.5" fill="#E8B23A"></circle><g stroke="#E8B23A" stroke-width="2" stroke-linecap="round"><path d="M12 2v3"></path><path d="M12 19v3"></path><path d="M2 12h3"></path><path d="M19 12h3"></path><path d="M4.9 4.9l2.1 2.1"></path><path d="M17 17l2.1 2.1"></path><path d="M19.1 4.9L17 7"></path><path d="M7 17l-2.1 2.1"></path></g></svg>
+    <span class="brand-name">Powerless Utility</span>
+  </a>
+</header>
+
+<main class="call-wrap">
+  <div class="call-card" id="card">
+    <p class="call-label">CALLING</p>
+    <p class="call-number" id="number">…</p>
+    <a class="call-btn" id="dial" href="#">Call</a>
+    <p class="call-hint">If your phone didn't open the dialler, tap Call.</p>
+  </div>
+</main>
+
+<script>
+(function () {
+  var digits = (location.hash || '').replace(/\D/g, '');
+  if (digits.length === 11 && digits.charAt(0) === '1') digits = digits.slice(1);
+  var card = document.getElementById('card');
+  if (digits.length !== 10) {
+    card.innerHTML = '<p class="call-err">No phone number in this link.</p>';
+    return;
+  }
+  var pretty = '(' + digits.slice(0, 3) + ') ' + digits.slice(3, 6) + '-' + digits.slice(6);
+  var tel = 'tel:+1' + digits;
+  document.getElementById('number').textContent = pretty;
+  var dial = document.getElementById('dial');
+  dial.href = tel;
+  dial.textContent = 'Call ' + pretty;
+  // Go straight to the dialler; the button stays as the fallback.
+  location.replace(tel);
+})();
+</script>
+</body>
+</html>

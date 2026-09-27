@@ -61,7 +61,14 @@ var BRAND = '#0077A8';
 var TINT = '#E5F5FC';
 var MUTED = '#5B6670';
 var BAND = '#F5F7F9';
-var DATE_FORMAT = 'd mmm yyyy, h:mm am/pm';
+var DATE_FORMAT = 'd mmm yyyy, h:mm am/pm';     // Consent log: full date for the record
+var SHORT_DATE = 'ddd d mmm, h:mm am/pm';       // working tabs: "Sat 27 Sep, 10:45 am"
+/* Sheets will not open a tel: link, so phone numbers link to this page on the
+   website, which opens the dialler. The number rides in the URL fragment, which
+   the browser never sends to the server. */
+var CALL_PAGE = 'https://powerlessutility.com/call.html';
+// A lead still marked New this long after it came in is flagged as overdue.
+var OVERDUE_DAYS = 1;
 /* Rows a data tab starts with. Google's default 1,000 blank rows mean
    screens of empty scrolling on a phone; 100 keeps the tab finite, and each
    new lead inserts its own row so it never runs out. */
@@ -76,6 +83,22 @@ TAB_COLOURS[TABS.consent] = '#C7CDD2';
 TAB_COLOURS[TABS.errors] = '#9B2C20';
 
 var FOLLOW_UP_STAGES = ['New', 'Called', 'Booked', 'Not interested', 'Won'];
+
+var HEADER_NOTES = {};
+HEADER_NOTES[TABS.leads] = {
+  'Phone': 'Tap to call from a phone. Amber = this number has submitted more than once.',
+  'Follow-up': 'Yours to set. New = not called yet. The Summary counts each stage.',
+  'Notes': 'What happened on the call. Wraps, so write as much as you need.',
+  'Received': 'When the form was submitted, Houston time. The row turns amber if it is still New after a day.',
+  'Status': 'Set by the form. Qualified, or Needs review when the ZIP is outside the usual service area.',
+  'Source': 'Where the visitor came from: the campaign tag, else the referring site, else Direct.'
+};
+HEADER_NOTES[TABS.unqualified] = {
+  'Reason': 'Why the form turned this visitor away. Not a contact: no phone number or consent was collected.'
+};
+HEADER_NOTES[TABS.consent] = {
+  'Event ID': 'Matches the Received time and name on the Leads tab. Keep this tab for your records.'
+};
 
 /* [header, field, width]. Fields come from flatten_().
 
@@ -95,7 +118,7 @@ var LEAD_COLUMNS = [
   ['Email', 'email', 200],
   ['Address', 'address', 260],
   ['ZIP', 'zip', 60],
-  ['Monthly bill', 'bill', 100],
+  ['Bill', 'bill', 80],
   ['Shade', 'shade', 100],
   ['Roof age', 'roofAge', 85],
   ['Timeline', 'timeline', 115],
@@ -107,7 +130,7 @@ var UNQUALIFIED_COLUMNS = [
   ['Received', 'receivedAt', 140],
   ['ZIP', 'zip', 60],
   ['Address', 'address', 260],
-  ['Monthly bill', 'bill', 100],
+  ['Bill', 'bill', 80],
   ['Owns home', 'homeowner', 90],
   ['Source', 'source', 120]
 ];
@@ -294,7 +317,8 @@ function insertNewest_(tabName, columns, row) {
 
   // Plain-text format on everything but the date, so Sheets never turns a ZIP
   // or phone number into a number and drops characters.
-  range.setNumberFormats([layout.map(function (c) { return c[1] === 'receivedAt' ? DATE_FORMAT : '@'; })]);
+  var dateFormat = tabName === TABS.consent ? DATE_FORMAT : SHORT_DATE;
+  range.setNumberFormats([layout.map(function (c) { return c[1] === 'receivedAt' ? dateFormat : '@'; })]);
   range.setValues([layout.map(function (c) {
     var v = c[1] ? row[c[1]] : '';
     return v === undefined || v === null ? '' : v;
@@ -303,7 +327,11 @@ function insertNewest_(tabName, columns, row) {
   var followUp = indexOfField_(layout, 'followUp');
   if (followUp !== -1) sheet.getRange(2, followUp + 1).setDataValidation(followUpRule_());
 
-  // Tappable on a phone: opens the mail app.
+  // Tappable on a phone: the number opens the dialler (via CALL_PAGE), the
+  // email opens the mail app.
+  var phone = indexOfField_(layout, 'phone');
+  var digits = String(row.phone || '').replace(/\D/g, '');
+  if (phone !== -1 && digits.length === 10) linkCell_(sheet.getRange(2, phone + 1), row.phone, CALL_PAGE + '#1' + digits);
   var email = indexOfField_(layout, 'email');
   if (email !== -1 && row.email) linkCell_(sheet.getRange(2, email + 1), row.email, 'mailto:' + row.email);
 }
@@ -419,6 +447,10 @@ function buildTab_(tabName, columns) {
   // renaming it, without ever locking the owner out.
   head.protect().setDescription('Header row — the script writes rows by these names').setWarningOnly(true);
 
+  // Short explanations on hover (desktop) or tap (phone), so the tab explains itself.
+  var notes = HEADER_NOTES[tabName] || {};
+  columns.forEach(function (c, i) { if (notes[c[0]]) sheet.getRange(1, i + 1).setNote(notes[c[0]]); });
+
   var rules = [];
   if (tabName === TABS.leads) {
     var status = colLetter_(indexOfField_(columns, 'status') + 1);
@@ -435,6 +467,24 @@ function buildTab_(tabName, columns) {
     rules.push(textRule_('Won', '#0B6B3A', '#FFFFFF', fuRange));
     rules.push(textRule_('Not interested', '#EEF0F2', MUTED, fuRange));
     sheet.getRange(2, followUp, sheet.getMaxRows() - 1, 1).setDataValidation(followUpRule_());
+
+    // Same number submitted more than once: the phone cell turns amber, so
+    // nobody gets called twice about one enquiry.
+    var ph = colLetter_(indexOfField_(columns, 'phone') + 1);
+    rules.push(SpreadsheetApp.newConditionalFormatRule()
+      .whenFormulaSatisfied('=AND(ROW()>1,$' + ph + '1<>"",COUNTIF($' + ph + ':$' + ph + ',$' + ph + '1)>1)')
+      .setBackground('#FDF0D5').setFontColor('#8A5A00')
+      .setRanges([sheet.getRange(ph + ':' + ph)])
+      .build());
+
+    // Overdue: still New a day after it came in, the whole row turns amber.
+    // Listed last so the chip colours above keep their own cells.
+    var recv = colLetter_(indexOfField_(columns, 'receivedAt') + 1);
+    rules.push(SpreadsheetApp.newConditionalFormatRule()
+      .whenFormulaSatisfied('=AND(ROW()>1,$' + fuLetter + '1="New",$' + recv + '1<>"",$' + recv + '1<NOW()-' + OVERDUE_DAYS + ')')
+      .setBackground('#FDF0D5')
+      .setRanges([sheet.getRange(1, 1, sheet.getMaxRows(), width)])
+      .build());
   } else if (tabName === TABS.unqualified) {
     var reason = colLetter_(indexOfField_(columns, 'reason') + 1);
     rules.push(SpreadsheetApp.newConditionalFormatRule()
@@ -489,6 +539,7 @@ function buildSummary_() {
   var rows = [
     ['Powerless Utility — Leads', '', 'title'],
     ['New leads to call', '=COUNTIF(' + fu + ',"New")', 'hero'],
+    ['Overdue — still New after a day', '=COUNTIFS(' + fu + ',"New",' + recv + ',"<"&(NOW()-' + OVERDUE_DAYS + '))', 'stat', 'redIfAny'],
     ['Leads in the last 7 days', '=COUNTIFS(' + recv + ',">="&(NOW()-7))', 'stat'],
     ['Leads in the last 30 days', '=COUNTIFS(' + recv + ',">="&(NOW()-30))', 'stat'],
     ['Latest lead', '=IF(COUNTA(' + recv + ')<2,"—",TEXT(MAX(' + recv + '),"' + DATE_FORMAT + '"))', 'stat'],
@@ -533,6 +584,7 @@ function buildSummary_() {
     amber: ['#FDF0D5', '#8A5A00'],
     red: ['#FBE3E1', '#9B2C20']
   };
+  var summaryRules = [];
   rows.forEach(function (row, i) {
     var r = i + 1;
     var a = sheet.getRange(r, 1), b = sheet.getRange(r, 2);
@@ -564,7 +616,14 @@ function buildSummary_() {
         b.setFontSize(11);
     }
     if (row[3] && ACCENT[row[3]]) b.setBackground(ACCENT[row[3]][0]).setFontColor(ACCENT[row[3]][1]).setFontWeight('bold');
+    if (row[3] === 'redIfAny') {
+      // Quiet at zero; red the moment there is something to chase.
+      summaryRules.push(SpreadsheetApp.newConditionalFormatRule()
+        .whenNumberGreaterThan(0).setBackground(ACCENT.red[0]).setFontColor(ACCENT.red[1]).setBold(true)
+        .setRanges([b]).build());
+    }
   });
+  if (summaryRules.length) sheet.setConditionalFormatRules(summaryRules);
   sheet.getRange(1, 2, rows.length, 1).setHorizontalAlignment('right').setVerticalAlignment('middle');
   sheet.getRange(1, 1, rows.length, 1).setVerticalAlignment('middle');
 

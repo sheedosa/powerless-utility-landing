@@ -3,6 +3,10 @@
 Built from the Claude Design handoff in `project/Powerless Utility Landing.dc.html`.
 
 - `index.html` — page markup (static sections; the lead-form card is rendered by JS)
+- `call.html` — tap-to-call bridge for the leads sheet: Google Sheets will not
+  open a `tel:` link, so phone cells link here and this page opens the dialler.
+  The number rides in the URL fragment, which browsers never send to the
+  server, so it is not logged anywhere. `noindex`.
 - `privacy.html` / `terms.html` — the two policy pages, served at `/privacy.html`
   and `/terms.html`; they carry the site header, footer and typography and
   nothing but the approved policy text in between
@@ -214,8 +218,8 @@ more — so the first columns of each tab are the ones that matter.
 
 | Tab | Holds |
 | --- | --- |
-| `Summary` | Two narrow columns (220 + 100) that fit a phone without sideways scrolling, nothing frozen. Top line: **New leads to call**. Then last 7 / 30 days, latest lead, the follow-up pipeline, qualified / needs review / unqualified, completion rate, why people were turned away, leads by week, and a column chart of the last 8 weeks with the count on each bar and no value axis (the table above carries the exact numbers). All formulas. |
-| `Leads` | Everyone who finished the form, **newest on top**. Column order is phone-first: **Name · Phone · Follow-up · Notes** are the first screen, then Received, Status, Email, Address, ZIP, Monthly bill, Shade, Roof age, Timeline, Source. |
+| `Summary` | Two narrow columns (220 + 100) that fit a phone without sideways scrolling, nothing frozen. Top line: **New leads to call**, then **Overdue** (still New after a day — turns red only when above zero). Then last 7 / 30 days, latest lead, the follow-up pipeline, qualified / needs review / unqualified, completion rate, why people were turned away, leads by week, and a column chart of the last 8 weeks with the count on each bar and no value axis (the table above carries the exact numbers). All formulas. |
+| `Leads` | Everyone who finished the form, **newest on top**. Column order is phone-first: **Name · Phone · Follow-up · Notes** are the first screen, then Received, Status, Email, Address, ZIP, Bill, Shade, Roof age, Timeline, Source. |
 | `Unqualified` | Everyone the form turned away, newest on top: **Reason** first, then Received, ZIP, Address, Monthly bill, Owns home, Source. No contact columns — they were never asked for them. |
 | `Consent log` | The consent evidence for each lead — box state, version, the exact wording shown, visitor time and timezone, page, campaign, referrer — keyed by Event ID. Kept off `Leads` so the working view stays short. |
 | `Errors` | Only appears if a write ever fails, with the raw submission so nothing is lost. |
@@ -231,9 +235,17 @@ How the `Leads` tab is meant to be used:
   its row and everything else stays one line.
 - The script never writes to an existing row, so Follow-up and Notes edits are
   safe. New leads are inserted above them.
-- **Email** is a `mailto:` link (opens the mail app on a phone). **Phone** is
-  plain text — `tel:` links in Sheets are unverified; test one on the phone
-  after the first real lead and it can be switched on.
+- **Phone** is tap-to-call: it links to `call.html` on the site, which opens
+  the dialler (Sheets refuses `tel:` links outright). It turns amber if the
+  same number has submitted more than once, so nobody is called twice about
+  one enquiry. **Email** is a `mailto:` link.
+- **Overdue**: a row still marked New a day after it came in turns amber
+  across its width, and the Summary's Overdue line goes red. That is the
+  one-call promise made visible.
+- Column headers carry a short note (hover on desktop, tap on a phone)
+  explaining Phone, Follow-up, Notes, Received, Status, Source and Reason.
+- Received reads "Sat 27 Sep, 10:45 am" on the working tabs; the Consent log
+  keeps the full date with the year for the record.
 - **Source** is the `utm_source` if the link was tagged, else the referring
   site (e.g. `google.com`), else `Direct`.
 - Phone numbers are stored as `(832) 884-7302` and ZIPs as text, so Sheets can
