@@ -219,7 +219,8 @@ more — so the first columns of each tab are the ones that matter.
 | Tab | Holds |
 | --- | --- |
 | `Summary` | Two narrow columns (220 + 100) that fit a phone without sideways scrolling, nothing frozen. Top line: **New leads to call**, then **Overdue** (still New after a day — turns red only when above zero). Then last 7 / 30 days, latest lead, the follow-up pipeline, qualified / needs review / unqualified, completion rate, why people were turned away, leads by week, and a column chart of the last 8 weeks with the count on each bar and no value axis (the table above carries the exact numbers). All formulas. |
-| `Leads` | Everyone who finished the form, **newest on top**. Column order is phone-first: **Name · Phone · Follow-up · Notes** are the first screen, then Received, Status, Email, Address, ZIP, Bill, Shade, Roof age, Timeline, Source. |
+| `Leads` | Everyone who finished the form, **newest on top**. Column order is phone-first: **Name · Phone · Follow-up · Notes** are the first screen, then Received, Status, Email, Address, ZIP, Bill, Shade, Roof age, Timeline, Source, and at the far right Campaign, Ad set, Ad (from the ad link's utm tags). |
+| `Campaigns` | Which ads bring people who book. Two tables filled in by formulas over `Leads`: per campaign, and per ad within campaign — leads, booked, won, book rate. A new campaign appears on its own the first time a tagged lead arrives. Leads with no utm tag are not shown. |
 | `Unqualified` | Everyone the form turned away, newest on top: **Reason** first, then Received, ZIP, Address, Monthly bill, Owns home, Source. No contact columns — they were never asked for them. |
 | `Consent log` | The consent evidence for each lead — box state, version, the exact wording shown, visitor time and timezone, page, campaign, referrer — keyed by Event ID. Kept off `Leads` so the working view stays short. |
 | `Errors` | Only appears if a write ever fails, with the raw submission so nothing is lost. |
@@ -289,6 +290,34 @@ Things worth knowing:
   mobile app), per-stage tabs, an assigned-to column (single user), column
   protections (would nag on legitimate edits), hidden tabs (cannot be unhidden
   on a phone).
+
+## Facebook / Meta ads — phase 1 (attribution without a pixel)
+
+Nothing on the page talks to Meta. Attribution comes from the utm tags on the
+ad links, which the page already captures (`captureAttribution` in `app.js`)
+and sends with every lead. Put this in the **URL parameters** field of every
+ad (Ads Manager → ad level → Tracking → URL parameters); Meta fills in the
+`{{…}}` pieces itself:
+
+```
+utm_source={{site_source_name}}&utm_medium=paid&utm_campaign={{campaign.name}}&utm_term={{adset.name}}&utm_content={{ad.name}}
+```
+
+That gives the sheet: **Source** = `fb` / `ig` / `an` / `msg` (Facebook,
+Instagram, Audience Network, Messenger), **Campaign**, **Ad set** and **Ad**,
+and the `Campaigns` tab totals them up against Follow-up, so the question
+"which ads bring people who book" answers itself after a couple of weeks.
+
+**Headline per ad.** Add `&h=B` (or `C`, `D`) to an ad's link and the landing
+page opens on that headline variant from `HEADLINES` in `app.js`, so the page
+can say what the ad said. `&h=any other text` uses that text verbatim. The
+variant shown travels with the lead as `headline`, and the full landing URL
+is on the Consent log's Page column, so headline performance can be read
+from the sheet too.
+
+Phase 2 (Meta Pixel + Conversions API from the Apps Script) and phase 3
+(sending Booked / Won back to Meta) are deliberately not built yet: both send
+data to Meta and need `privacy.html` updated first.
 
 ## Consent and enquiry data
 

@@ -11,6 +11,9 @@
  *                are waiting for a call. All formulas, always current.
  *   Leads        people who finished the form, newest at the top. Work them
  *                from here: call, set Follow-up, add Notes.
+ *   Campaigns    leads, booked and won per ad campaign and per ad, filled in
+ *                from the utm tags on your ad links. Shows which ads bring
+ *                people who actually book.
  *   Unqualified  people the form turned away, and why. Not contacts — they
  *                never gave a phone number or consent. Do not call them.
  *   Consent log  the consent evidence for each lead, kept for your records.
@@ -51,6 +54,7 @@ var LOCALE = 'en_US';
 var TABS = {
   summary: 'Summary',
   leads: 'Leads',
+  campaigns: 'Campaigns',
   unqualified: 'Unqualified',
   consent: 'Consent log',
   errors: 'Errors'
@@ -78,6 +82,7 @@ var STARTING_ROWS = 100;
 var TAB_COLOURS = {};
 TAB_COLOURS[TABS.summary] = BRAND;
 TAB_COLOURS[TABS.leads] = '#0B6B3A';
+TAB_COLOURS[TABS.campaigns] = '#E8B23A';
 TAB_COLOURS[TABS.unqualified] = MUTED;
 TAB_COLOURS[TABS.consent] = '#C7CDD2';
 TAB_COLOURS[TABS.errors] = '#9B2C20';
@@ -91,7 +96,10 @@ HEADER_NOTES[TABS.leads] = {
   'Notes': 'What happened on the call. Wraps, so write as much as you need.',
   'Received': 'When the form was submitted, Houston time. The row turns amber if it is still New after a day.',
   'Status': 'Set by the form. Qualified, or Needs review when the ZIP is outside the usual service area.',
-  'Source': 'Where the visitor came from: the campaign tag, else the referring site, else Direct.'
+  'Source': 'Where the visitor came from: the campaign tag, else the referring site, else Direct.',
+  'Campaign': 'From the utm_campaign tag on the ad link. Blank means the visitor did not arrive from a tagged ad.',
+  'Ad set': 'From utm_term on the ad link.',
+  'Ad': 'From utm_content on the ad link. The Campaigns tab totals these up.'
 };
 HEADER_NOTES[TABS.unqualified] = {
   'Reason': 'Why the form turned this visitor away. Not a contact: no phone number or consent was collected.'
@@ -122,7 +130,10 @@ var LEAD_COLUMNS = [
   ['Shade', 'shade', 100],
   ['Roof age', 'roofAge', 85],
   ['Timeline', 'timeline', 115],
-  ['Source', 'source', 120]
+  ['Source', 'source', 120],
+  ['Campaign', 'utmCampaign', 150],
+  ['Ad set', 'adSet', 150],
+  ['Ad', 'ad', 150]
 ];
 
 var UNQUALIFIED_COLUMNS = [
@@ -132,7 +143,10 @@ var UNQUALIFIED_COLUMNS = [
   ['Address', 'address', 260],
   ['Bill', 'bill', 80],
   ['Owns home', 'homeowner', 90],
-  ['Source', 'source', 120]
+  ['Source', 'source', 120],
+  ['Campaign', 'utmCampaign', 150],
+  ['Ad set', 'adSet', 150],
+  ['Ad', 'ad', 150]
 ];
 
 var CONSENT_COLUMNS = [
@@ -166,6 +180,7 @@ function setup() {
   ensureTab_(TABS.unqualified, UNQUALIFIED_COLUMNS, notes);
   ensureTab_(TABS.consent, CONSENT_COLUMNS, notes);
   rebuildSummary_();
+  rebuildCampaigns_();
 
   orderTabs_(book);
   var blank = book.getSheetByName('Sheet1');
@@ -260,6 +275,8 @@ function flatten_(p) {
     timeZone: p.timeZone || '',
     pageUrl: consent.pageUrl || p.landingPage || '',
     utmCampaign: p.utmCampaign || '',
+    adSet: p.utmTerm || '',
+    ad: p.utmContent || '',
     referrer: p.referrer || '',
     eventId: p.eventId || ''
   };
@@ -379,6 +396,7 @@ function ensureTabs_() {
   if (!book.getSheetByName(TABS.unqualified)) buildTab_(TABS.unqualified, UNQUALIFIED_COLUMNS);
   if (!book.getSheetByName(TABS.consent)) buildTab_(TABS.consent, CONSENT_COLUMNS);
   if (!book.getSheetByName(TABS.summary)) buildSummary_();
+  if (!book.getSheetByName(TABS.campaigns)) buildCampaigns_();
   if (fresh) {
     // setup() was skipped; give the sheet the right clock anyway.
     book.setSpreadsheetTimeZone(TIME_ZONE);
@@ -665,8 +683,87 @@ function buildSummary_() {
   return sheet;
 }
 
+/** Formulas only, so it is simply rebuilt like the Summary. */
+function rebuildCampaigns_() {
+  var book = SpreadsheetApp.getActiveSpreadsheet();
+  var old = book.getSheetByName(TABS.campaigns);
+  if (old) old.setName(TABS.campaigns + ' (old)');
+  var built = buildCampaigns_();
+  if (old) book.deleteSheet(old);
+  return built;
+}
+
+/**
+ * The Campaigns tab: which ads bring people who book. Two tables side by
+ * side — by campaign, and by ad within campaign — each filled in by UNIQUE /
+ * COUNTIFS formulas over the Leads tab, so a new campaign appears on its own.
+ */
+function buildCampaigns_() {
+  var book = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = book.insertSheet(TABS.campaigns);
+  sheet.setTabColor(TAB_COLOURS[TABS.campaigns]);
+
+  var leadsSheet = book.getSheetByName(TABS.leads);
+  var L = leadsSheet ? layoutOf_(leadsSheet, LEAD_COLUMNS) : LEAD_COLUMNS;
+  var letter = function (field) { return colLetter_(indexOfField_(L, field) + 1); };
+  var full = function (field) { var c = letter(field); return "'" + TABS.leads + "'!" + c + ':' + c; };
+  var body = function (field) { var c = letter(field); return "'" + TABS.leads + "'!" + c + '2:' + c; };
+  var camp = full('utmCampaign'), ad = full('ad'), fu = full('followUp');
+  var FIRST = 5, LAST = STARTING_ROWS;
+  var span = function (col) { return col + FIRST + ':' + col + LAST; };
+
+  sheet.getRange('A1').setValue('Campaigns — which ads bring people who book')
+    .setFontSize(16).setFontWeight('bold').setFontColor(INK);
+  sheet.getRange('A2').setValue('Filled in automatically from the utm tags on your ad links. Leads that did not arrive from a tagged ad are not shown here.')
+    .setFontSize(10).setFontColor(MUTED);
+  sheet.setRowHeight(1, 40);
+
+  // ---- by campaign: A:E ----
+  var h1 = sheet.getRange(4, 1, 1, 5);
+  h1.setValues([['Campaign', 'Leads', 'Booked', 'Won', 'Book rate']]);
+  sheet.getRange(FIRST, 1).setFormula('=IFERROR(SORT(UNIQUE(FILTER(' + body('utmCampaign') + ',' + body('utmCampaign') + '<>""))),"")');
+  sheet.getRange(FIRST, 2).setFormula('=ARRAYFORMULA(IF(' + span('A') + '="","",COUNTIF(' + camp + ',' + span('A') + ')))');
+  sheet.getRange(FIRST, 3).setFormula('=ARRAYFORMULA(IF(' + span('A') + '="","",COUNTIFS(' + camp + ',' + span('A') + ',' + fu + ',"Booked")))');
+  sheet.getRange(FIRST, 4).setFormula('=ARRAYFORMULA(IF(' + span('A') + '="","",COUNTIFS(' + camp + ',' + span('A') + ',' + fu + ',"Won")))');
+  sheet.getRange(FIRST, 5).setFormula('=ARRAYFORMULA(IF(' + span('A') + '="","",IF(' + span('B') + '=0,"—",TEXT((' + span('C') + '+' + span('D') + ')/' + span('B') + ',"0%"))))');
+
+  // ---- by ad within campaign: G:L ----
+  var h2 = sheet.getRange(4, 7, 1, 6);
+  h2.setValues([['Campaign', 'Ad', 'Leads', 'Booked', 'Won', 'Book rate']]);
+  sheet.getRange(FIRST, 7).setFormula('=IFERROR(SORT(UNIQUE(FILTER({' + body('utmCampaign') + ',' + body('ad') + '},' + body('ad') + '<>""))),"")');
+  sheet.getRange(FIRST, 9).setFormula('=ARRAYFORMULA(IF(' + span('H') + '="","",COUNTIFS(' + camp + ',' + span('G') + ',' + ad + ',' + span('H') + ')))');
+  sheet.getRange(FIRST, 10).setFormula('=ARRAYFORMULA(IF(' + span('H') + '="","",COUNTIFS(' + camp + ',' + span('G') + ',' + ad + ',' + span('H') + ',' + fu + ',"Booked")))');
+  sheet.getRange(FIRST, 11).setFormula('=ARRAYFORMULA(IF(' + span('H') + '="","",COUNTIFS(' + camp + ',' + span('G') + ',' + ad + ',' + span('H') + ',' + fu + ',"Won")))');
+  sheet.getRange(FIRST, 12).setFormula('=ARRAYFORMULA(IF(' + span('H') + '="","",IF(' + span('I') + '=0,"—",TEXT((' + span('J') + '+' + span('K') + ')/' + span('I') + ',"0%"))))');
+
+  [h1, h2].forEach(function (h) {
+    h.setFontWeight('bold').setFontColor('#FFFFFF').setBackground(BRAND).setFontSize(10).setVerticalAlignment('middle');
+  });
+  sheet.setRowHeight(4, 32);
+  sheet.setFrozenRows(4);
+  [[1, 200], [2, 70], [3, 70], [4, 60], [5, 80], [6, 24], [7, 200], [8, 200], [9, 70], [10, 70], [11, 60], [12, 80]]
+    .forEach(function (w) { sheet.setColumnWidth(w[0], w[1]); });
+  sheet.getRange(FIRST, 2, LAST - FIRST + 1, 4).setHorizontalAlignment('right');
+  sheet.getRange(FIRST, 9, LAST - FIRST + 1, 4).setHorizontalAlignment('right');
+  sheet.getRange(FIRST, 1, LAST - FIRST + 1, 12).setFontSize(11).setFontColor(INK);
+  sheet.setHiddenGridlines(true);
+
+  var extra = sheet.getMaxColumns() - 12;
+  if (extra > 0) sheet.deleteColumns(13, extra);
+  var surplus = sheet.getMaxRows() - LAST;
+  if (surplus > 0) sheet.deleteRows(LAST + 1, surplus);
+
+  // Won rows stand out in both tables.
+  sheet.setConditionalFormatRules([
+    SpreadsheetApp.newConditionalFormatRule().whenNumberGreaterThan(0)
+      .setBackground('#D9F2E3').setFontColor('#0B6B3A').setBold(true)
+      .setRanges([sheet.getRange(span('D')), sheet.getRange(span('K'))]).build()
+  ]);
+  return sheet;
+}
+
 function orderTabs_(book) {
-  [TABS.summary, TABS.leads, TABS.unqualified, TABS.consent].forEach(function (name, i) {
+  [TABS.summary, TABS.leads, TABS.campaigns, TABS.unqualified, TABS.consent].forEach(function (name, i) {
     var sheet = book.getSheetByName(name);
     if (!sheet) return;
     book.setActiveSheet(sheet);

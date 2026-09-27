@@ -117,6 +117,8 @@
   };
 
   var tracking = { utm: {}, referrer: '', landingPage: '', fired: {} };
+  // Which headline this visitor saw: 'A'..'D', or 'custom' for free text via ?h=.
+  var headlineKey = 'A';
   var focusAfterRender = null;
 
   var els = {
@@ -649,6 +651,7 @@
       utmTerm: tracking.utm.utmTerm || '',
       referrer: tracking.referrer,
       landingPage: tracking.landingPage,
+      headline: headlineKey,
       eventId: eventId || uuid()
     };
   }
@@ -1046,12 +1049,21 @@
 
   /* ---------------------------- init ---------------------------- */
 
+  /* The headline can be chosen per ad from the link: ?h=B picks variant B
+     (so each ad can land on the promise it made), and ?h=any other text uses
+     that text verbatim. Otherwise CONFIG.headlineVariant applies. */
   function applyHeadline() {
     var q = new URLSearchParams(location.search);
     var override = q.get('headline') || q.get('h');
-    if (override) { els.headline.textContent = override; return; }
-    var key = String(CONFIG.headlineVariant || 'A').charAt(0).toUpperCase();
-    els.headline.innerHTML = HEADLINES[key] || HEADLINES.A;
+    if (override && HEADLINES[override.toUpperCase()] && override.length === 1) {
+      headlineKey = override.toUpperCase();
+      els.headline.innerHTML = HEADLINES[headlineKey];
+      return;
+    }
+    if (override) { headlineKey = 'custom'; els.headline.textContent = override; return; }
+    headlineKey = String(CONFIG.headlineVariant || 'A').charAt(0).toUpperCase();
+    if (!HEADLINES[headlineKey]) headlineKey = 'A';
+    els.headline.innerHTML = HEADLINES[headlineKey];
   }
 
   function captureAttribution() {
