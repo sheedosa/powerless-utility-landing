@@ -43,11 +43,11 @@ All prototype "props" are the `CONFIG` object at the top of `app.js`:
 
 ## Before launch
 
-1. **Finish the Google Sheets hookup** — see "Google Sheets backend" below. The
-   sheet exists and the token is set; what remains is deploying the Apps Script
-   and putting its `/exec` URL in `CONFIG.leadEndpoint`. Then run a real
-   end-to-end test: one qualified submission and one renter, and check both rows
-   land in the right tabs. A success message on the page does not prove delivery.
+1. **Google Sheets hookup is wired** — `CONFIG.leadEndpoint` points at the Apps
+   Script deployment and the token matches. Remaining check: one qualified test
+   submission and one renter on the live site, confirming both rows land on the
+   right tabs, then delete the test rows. A success message on the page does not
+   prove delivery.
 2. Replace `excludedZips` / `servicePrefixes` with real service-area data.
 3. **Settle the consent disclosure — see "Consent and enquiry data" below.**
    It is the one open item in the form that a code change alone cannot close.

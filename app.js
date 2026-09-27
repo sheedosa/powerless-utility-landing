@@ -21,7 +21,7 @@
     /* Where submissions go. null = log to the console only.
        For the Google Sheet backend this is the Apps Script web-app /exec URL
        (see tools/google-sheets-backend.gs). */
-    leadEndpoint: null,
+    leadEndpoint: 'https://script.google.com/macros/s/AKfycbwgZqJ854FrVvxHu_eLglSeindxAmsZaDImaK78SjTYaHfgovK-GqSFB5SFCc-e4Fdv/exec',
     /* 'text' posts the JSON body as text/plain. Apps Script needs that: an
        application/json POST triggers a CORS preflight it does not answer, and
        the submission fails. Use 'json' for a normal API. */
