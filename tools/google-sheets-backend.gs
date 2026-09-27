@@ -1,15 +1,19 @@
 /**
  * Powerless Utility — Google Sheets backend for the landing-page funnel.
  *
- * Every form submission lands here and is written into this spreadsheet:
+ * Every form submission lands here and is written into this spreadsheet.
+ * Laid out to work on a phone as well as a desktop: the Leads tab opens on
+ * Name | Phone | Follow-up, the Summary fits a phone screen without sideways
+ * scrolling, and every colour, dropdown and frozen pane is honoured by the
+ * Google Sheets mobile app.
  *
- *   Summary      the numbers at a glance — all formulas, always current
+ *   Summary      the numbers at a glance, starting with how many new leads
+ *                are waiting for a call. All formulas, always current.
  *   Leads        people who finished the form, newest at the top. Work them
- *                from here: set Follow-up and add Notes as you call.
+ *                from here: call, set Follow-up, add Notes.
  *   Unqualified  people the form turned away, and why. Not contacts — they
  *                never gave a phone number or consent. Do not call them.
  *   Consent log  the consent evidence for each lead, kept for your records.
- *                Matches a Leads row by the Received time and name.
  *   Errors       only appears if a submission ever fails to save; the raw
  *                data is kept here so no lead is lost.
  *
@@ -27,12 +31,22 @@
  *     "Anyone" is needed because visitors' browsers send the form without
  *     signing in to Google. SHARED_TOKEN below is what stops strangers.
  *
+ * RUNNING setup AGAIN is safe. Tabs that match the current layout are left
+ * alone; an empty tab with an older layout is rebuilt; a tab with rows in an
+ * older layout is kept as-is (it keeps working — the script writes each
+ * field under its own header) and setup tells you how to migrate it.
+ * The Summary is rebuilt every time, since it holds nothing but formulas.
+ *
  * AFTER EDITING THIS FILE: Deploy → Manage deployments → pencil icon →
  * Version: New version → Deploy. Otherwise the website keeps using the old copy.
  */
 
 // Must match CONFIG.leadToken in app.js. Change both together or neither.
 var SHARED_TOKEN = '0ab4012780309936280410d292c8b210';
+
+// Houston. Governs how the Received time is shown and the "last 7 days" maths.
+var TIME_ZONE = 'America/Chicago';
+var LOCALE = 'en_US';
 
 var TABS = {
   summary: 'Summary',
@@ -42,35 +56,56 @@ var TABS = {
   errors: 'Errors'
 };
 
+var INK = '#111417';
+var BRAND = '#0077A8';
+var TINT = '#E5F5FC';
+var MUTED = '#5B6670';
+var BAND = '#F5F7F9';
+var DATE_FORMAT = 'd mmm yyyy, h:mm am/pm';
+
+// Shown on the phone's tab strip, so the right tab can be found by colour.
+var TAB_COLOURS = {};
+TAB_COLOURS[TABS.summary] = BRAND;
+TAB_COLOURS[TABS.leads] = '#0B6B3A';
+TAB_COLOURS[TABS.unqualified] = MUTED;
+TAB_COLOURS[TABS.consent] = '#C7CDD2';
+TAB_COLOURS[TABS.errors] = '#9B2C20';
+
 var FOLLOW_UP_STAGES = ['New', 'Called', 'Booked', 'Not interested', 'Won'];
 
-/* [header, field, width]. Fields come from flatten_(). Add new columns at the
-   END of a list so existing rows keep lining up with their headers. */
+/* [header, field, width]. Fields come from flatten_().
+
+   The header row is the contract: rows are written under whichever header
+   carries each name, so columns can be reordered here (or dragged around in
+   the sheet) without existing rows drifting out of line.
+
+   Leads is ordered for a phone: the first screen is Name | Phone | Follow-up,
+   which is everything needed to make the call and log what happened. */
 var LEAD_COLUMNS = [
+  ['Name', 'name', 130],
+  ['Phone', 'phone', 110],
+  ['Follow-up', 'followUp', 115],
+  ['Notes', 'notes', 240],
   ['Received', 'receivedAt', 140],
-  ['Status', 'status', 110],
-  ['Follow-up', 'followUp', 120],
-  ['Notes', 'notes', 220],
-  ['Name', 'name', 160],
-  ['Phone', 'phone', 130],
-  ['Email', 'email', 210],
-  ['Address', 'address', 280],
-  ['ZIP', 'zip', 70],
-  ['Monthly bill', 'bill', 105],
-  ['Shade', 'shade', 110],
-  ['Roof age', 'roofAge', 90],
-  ['Timeline', 'timeline', 125],
-  ['Source', 'source', 130]
+  ['Status', 'status', 105],
+  ['Email', 'email', 200],
+  ['Address', 'address', 260],
+  ['ZIP', 'zip', 60],
+  ['Monthly bill', 'bill', 100],
+  ['Shade', 'shade', 100],
+  ['Roof age', 'roofAge', 85],
+  ['Timeline', 'timeline', 115],
+  ['Source', 'source', 120]
 ];
 
 var UNQUALIFIED_COLUMNS = [
+  ['Reason', 'reason', 170],
   ['Received', 'receivedAt', 140],
-  ['Reason', 'reason', 230],
-  ['Address', 'address', 280],
-  ['ZIP', 'zip', 70],
-  ['Monthly bill', 'bill', 105],
-  ['Owns home', 'homeowner', 95],
-  ['Source', 'source', 130]
+  ['ZIP', 'zip', 60],
+  ['Address', 'address', 260],
+  ['Monthly bill', 'bill', 100],
+  ['Owns home', 'homeowner', 90],
+  ['Source', 'source', 120]
 ];
 
 var CONSENT_COLUMNS = [
@@ -89,30 +124,28 @@ var CONSENT_COLUMNS = [
   ['Referrer', 'referrer', 200]
 ];
 
-var INK = '#111417';
-var BRAND = '#0077A8';
-var DATE_FORMAT = 'd mmm yyyy, h:mm am/pm';
-
 /* ------------------------------------------------------------------ */
-/* Run once from the editor                                           */
+/* Run once from the editor (safe to run again)                       */
 /* ------------------------------------------------------------------ */
 
 /** Builds every tab so the sheet is ready before the first lead arrives. */
 function setup() {
   var book = SpreadsheetApp.getActiveSpreadsheet();
-  ensureTabs_();
+  book.setSpreadsheetTimeZone(TIME_ZONE);
+  book.setSpreadsheetLocale(LOCALE);
 
-  // Tidy the tab order and drop the blank sheet Google creates by default.
-  [TABS.summary, TABS.leads, TABS.unqualified, TABS.consent].forEach(function (name, i) {
-    var sheet = book.getSheetByName(name);
-    book.setActiveSheet(sheet);
-    book.moveActiveSheet(i + 1);
-  });
+  var notes = [];
+  ensureTab_(TABS.leads, LEAD_COLUMNS, notes);
+  ensureTab_(TABS.unqualified, UNQUALIFIED_COLUMNS, notes);
+  ensureTab_(TABS.consent, CONSENT_COLUMNS, notes);
+  rebuildSummary_();
+
+  orderTabs_(book);
   var blank = book.getSheetByName('Sheet1');
   if (blank && blank.getLastRow() === 0 && book.getSheets().length > 1) book.deleteSheet(blank);
   book.setActiveSheet(book.getSheetByName(TABS.summary));
 
-  return 'Setup complete';
+  return notes.length ? 'Setup complete. ' + notes.join(' ') : 'Setup complete';
 }
 
 /* ------------------------------------------------------------------ */
@@ -242,57 +275,142 @@ function isDuplicate_(eventId) {
 /** Inserts the row directly under the header, so the newest is always on top. */
 function insertNewest_(tabName, columns, row) {
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(tabName);
-  var width = columns.length;
+  var layout = layoutOf_(sheet, columns);
+  var width = layout.length;
   sheet.insertRowBefore(2);
 
   var range = sheet.getRange(2, 1, 1, width);
   // The new row inherits the header's styling; reset it to plain body text.
+  // Background stays unset so the row banding shows through.
   range.setBackground(null).setFontColor(INK).setFontWeight('normal')
-       .setFontSize(10).setWrap(false).setVerticalAlignment('middle');
-  sheet.setRowHeight(2, 24);
+       .setFontSize(11).setVerticalAlignment('middle');
+  // Only Notes wraps: a long note grows its row; everything else stays one line.
+  range.setWraps([layout.map(function (c) { return c[1] === 'notes'; })]);
+  sheet.setRowHeight(2, 28);
 
   // Plain-text format on everything but the date, so Sheets never turns a ZIP
   // or phone number into a number and drops characters.
-  range.setNumberFormats([columns.map(function (c) { return c[1] === 'receivedAt' ? DATE_FORMAT : '@'; })]);
-  range.setValues([columns.map(function (c) { return row[c[1]]; })]);
+  range.setNumberFormats([layout.map(function (c) { return c[1] === 'receivedAt' ? DATE_FORMAT : '@'; })]);
+  range.setValues([layout.map(function (c) {
+    var v = c[1] ? row[c[1]] : '';
+    return v === undefined || v === null ? '' : v;
+  })]);
 
-  if (tabName === TABS.leads) {
-    var followUp = indexOfField_(columns, 'followUp');
-    sheet.getRange(2, followUp + 1).setDataValidation(followUpRule_());
-  }
+  var followUp = indexOfField_(layout, 'followUp');
+  if (followUp !== -1) sheet.getRange(2, followUp + 1).setDataValidation(followUpRule_());
+
+  // Tappable on a phone: opens the mail app.
+  var email = indexOfField_(layout, 'email');
+  if (email !== -1 && row.email) linkCell_(sheet.getRange(2, email + 1), row.email, 'mailto:' + row.email);
+}
+
+/**
+ * The tab's columns in the order its header row actually has them, so a row
+ * is always written under the right header even if the layout here has
+ * changed since the tab was built, or columns were dragged around by hand.
+ */
+function layoutOf_(sheet, columns) {
+  var lastCol = sheet.getLastColumn();
+  if (!lastCol) return columns;
+  var header = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  return header.map(function (h) {
+    var label = String(h).trim();
+    for (var i = 0; i < columns.length; i++) if (columns[i][0] === label) return columns[i];
+    return [label, null, 0];   // a column the script does not know: left blank
+  });
+}
+
+function headerMatches_(sheet, columns) {
+  var layout = layoutOf_(sheet, columns);
+  if (layout.length !== columns.length) return false;
+  for (var i = 0; i < columns.length; i++) if (layout[i][0] !== columns[i][0]) return false;
+  return true;
+}
+
+/** Turns a cell into a link. The plain value is already in the cell, so if
+    this is refused nothing is lost. */
+function linkCell_(cell, text, url) {
+  try {
+    cell.setRichTextValue(SpreadsheetApp.newRichTextValue().setText(text).setLinkUrl(url).build());
+  } catch (err) { /* plain text stays */ }
 }
 
 /* ------------------------------------------------------------------ */
 /* Building tabs                                                      */
 /* ------------------------------------------------------------------ */
 
+/** Called on every submission: builds anything missing, touches nothing else. */
 function ensureTabs_() {
   var book = SpreadsheetApp.getActiveSpreadsheet();
-  if (!book.getSheetByName(TABS.leads)) buildTab_(TABS.leads, LEAD_COLUMNS);
+  var fresh = false;
+  if (!book.getSheetByName(TABS.leads)) { buildTab_(TABS.leads, LEAD_COLUMNS); fresh = true; }
   if (!book.getSheetByName(TABS.unqualified)) buildTab_(TABS.unqualified, UNQUALIFIED_COLUMNS);
   if (!book.getSheetByName(TABS.consent)) buildTab_(TABS.consent, CONSENT_COLUMNS);
   if (!book.getSheetByName(TABS.summary)) buildSummary_();
+  if (fresh) {
+    // setup() was skipped; give the sheet the right clock anyway.
+    book.setSpreadsheetTimeZone(TIME_ZONE);
+    book.setSpreadsheetLocale(LOCALE);
+  }
+}
+
+/** Called from setup(): build, keep, or rebuild a tab depending on its state. */
+function ensureTab_(name, columns, notes) {
+  var book = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = book.getSheetByName(name);
+  if (!sheet) return buildTab_(name, columns);
+  if (headerMatches_(sheet, columns)) return sheet;
+
+  var rows = Math.max(0, sheet.getLastRow() - 1);
+  if (rows > 0) {
+    notes.push(name + ' has ' + rows + ' row' + (rows === 1 ? '' : 's') +
+      ' in an older column order. It keeps working. To get the new layout, ' +
+      'rename that tab (for example "' + name + ' old") and run setup again.');
+    return sheet;
+  }
+
+  // Empty and out of date: replace it. Build the new one before deleting the
+  // old so the spreadsheet is never left without a tab.
+  sheet.setName(name + ' (old)');
+  var built = buildTab_(name, columns);
+  book.deleteSheet(sheet);
+  notes.push('Rebuilt ' + name + ' with the new layout (it had no rows).');
+  return built;
 }
 
 function buildTab_(tabName, columns) {
   var sheet = SpreadsheetApp.getActiveSpreadsheet().insertSheet(tabName);
   var width = columns.length;
+  sheet.setTabColor(TAB_COLOURS[tabName] || null);
 
   var head = sheet.getRange(1, 1, 1, width);
   head.setValues([columns.map(function (c) { return c[0]; })]);
   head.setFontWeight('bold').setFontColor('#FFFFFF').setBackground(BRAND)
-      .setVerticalAlignment('middle').setWrap(false);
+      .setFontSize(10).setVerticalAlignment('middle').setWrap(false);
   sheet.setRowHeight(1, 32);
   sheet.setFrozenRows(1);
-  sheet.setFrozenColumns(1);
+  // Only the working tab keeps a frozen column; on a phone it costs a third
+  // of the screen, which the logs do not need.
+  if (tabName === TABS.leads) sheet.setFrozenColumns(1);
   columns.forEach(function (c, i) { sheet.setColumnWidth(i + 1, c[2]); });
 
   // Trim the unused columns to the right so the tab reads as one clean table.
   var extra = sheet.getMaxColumns() - width;
   if (extra > 0) sheet.deleteColumns(width + 1, extra);
 
+  // Zebra rows keep the eye on one lead while swiping sideways on a phone.
+  // The band must start at row 1: a row inserted at 2 then lands inside the
+  // banded range and extends it, rather than pushing the range down.
+  var band = sheet.getRange(1, 1, sheet.getMaxRows(), width)
+    .applyRowBanding(SpreadsheetApp.BandingTheme.LIGHT_GREY, true, false);
+  band.setHeaderRowColor(BRAND).setFirstRowColor('#FFFFFF').setSecondRowColor(BAND);
+
   // Filter over the whole table, so it grows with every inserted row.
   sheet.getRange(1, 1, sheet.getMaxRows(), width).createFilter();
+
+  // The header is what rows are written by; a warning stops a stray tap
+  // renaming it, without ever locking the owner out.
+  head.protect().setDescription('Header row — the script writes rows by these names').setWarningOnly(true);
 
   var rules = [];
   if (tabName === TABS.leads) {
@@ -304,11 +422,11 @@ function buildTab_(tabName, columns) {
 
     var fuLetter = colLetter_(followUp);
     var fuRange = sheet.getRange(fuLetter + ':' + fuLetter);
-    rules.push(textRule_('New', '#E5F5FC', BRAND, fuRange));
+    rules.push(textRule_('New', TINT, BRAND, fuRange));
     rules.push(textRule_('Called', '#EFEAFB', '#5B3FA8', fuRange));
     rules.push(textRule_('Booked', '#D9F2E3', '#0B6B3A', fuRange));
     rules.push(textRule_('Won', '#0B6B3A', '#FFFFFF', fuRange));
-    rules.push(textRule_('Not interested', '#EEF0F2', '#5B6670', fuRange));
+    rules.push(textRule_('Not interested', '#EEF0F2', MUTED, fuRange));
     sheet.getRange(2, followUp, sheet.getMaxRows() - 1, 1).setDataValidation(followUpRule_());
   } else if (tabName === TABS.unqualified) {
     var reason = colLetter_(indexOfField_(columns, 'reason') + 1);
@@ -323,55 +441,159 @@ function buildTab_(tabName, columns) {
   return sheet;
 }
 
-/** The Summary tab: labels and formulas only, so it never goes stale. */
+/** The Summary holds nothing but formulas, so it is simply rebuilt. */
+function rebuildSummary_() {
+  var book = SpreadsheetApp.getActiveSpreadsheet();
+  var old = book.getSheetByName(TABS.summary);
+  if (old) old.setName(TABS.summary + ' (old)');
+  var built = buildSummary_();
+  if (old) book.deleteSheet(old);
+  return built;
+}
+
+/**
+ * The Summary tab: two narrow columns that fit a phone without sideways
+ * scrolling, the number that matters most at the top, and one chart.
+ * Column letters are read from the live tabs, so this stays right even if a
+ * tab is in an older layout or its columns have been dragged around.
+ */
 function buildSummary_() {
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().insertSheet(TABS.summary, 0);
-  var L = "'" + TABS.leads + "'";
-  var U = "'" + TABS.unqualified + "'";
+  var book = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = book.insertSheet(TABS.summary, 0);
+  sheet.setTabColor(TAB_COLOURS[TABS.summary]);
 
+  var leadsSheet = book.getSheetByName(TABS.leads);
+  var unqSheet = book.getSheetByName(TABS.unqualified);
+  var L = leadsSheet ? layoutOf_(leadsSheet, LEAD_COLUMNS) : LEAD_COLUMNS;
+  var U = unqSheet ? layoutOf_(unqSheet, UNQUALIFIED_COLUMNS) : UNQUALIFIED_COLUMNS;
+  var col = function (tab, layout, field) {
+    var letter = colLetter_(indexOfField_(layout, field) + 1);
+    return "'" + tab + "'!" + letter + ':' + letter;
+  };
+  var recv = col(TABS.leads, L, 'receivedAt');
+  var status = col(TABS.leads, L, 'status');
+  var fu = col(TABS.leads, L, 'followUp');
+  var uRecv = col(TABS.unqualified, U, 'receivedAt');
+  var uReason = col(TABS.unqualified, U, 'reason');
+  var completed = 'MAX(0,COUNTA(' + recv + ')-1)';
+  var turnedAway = 'MAX(0,COUNTA(' + uRecv + ')-1)';
+
+  // [label, value, kind, accent]
   var rows = [
-    ['Powerless Utility — Leads', ''],
-    ['', ''],
-    ['Qualified', '=COUNTIF(' + L + '!B:B,"Qualified")'],
-    ['Needs review (ZIP outside the usual area)', '=COUNTIF(' + L + '!B:B,"Needs review")'],
-    ['Unqualified', '=MAX(0,COUNTA(' + U + '!A:A)-1)'],
-    ['Completion rate', '=IF(B3+B4+B5=0,"—",TEXT((B3+B4)/(B3+B4+B5),"0%"))'],
-    ['', ''],
-    ['FOLLOW-UP', ''],
-    ['New — not yet called', '=COUNTIF(' + L + '!C:C,"New")'],
-    ['Called', '=COUNTIF(' + L + '!C:C,"Called")'],
-    ['Booked', '=COUNTIF(' + L + '!C:C,"Booked")'],
-    ['Won', '=COUNTIF(' + L + '!C:C,"Won")'],
-    ['Not interested', '=COUNTIF(' + L + '!C:C,"Not interested")'],
-    ['', ''],
-    ['WHY PEOPLE WERE TURNED AWAY', ''],
-    ['Renters', '=COUNTIF(' + U + '!B:B,"Renter*")'],
-    ['Electric co-op area', '=COUNTIF(' + U + '!B:B,"Electric co-op*")'],
-    ['Outside service area', '=COUNTIF(' + U + '!B:B,"Outside service*")'],
-    ['', ''],
-    ['Leads in the last 7 days', '=COUNTIFS(' + L + '!A:A,">="&(NOW()-7))'],
-    ['Latest lead', '=IF(COUNTA(' + L + '!A:A)<2,"—",TEXT(MAX(' + L + '!A:A),"d mmm yyyy, h:mm am/pm"))']
+    ['Powerless Utility — Leads', '', 'title'],
+    ['New leads to call', '=COUNTIF(' + fu + ',"New")', 'hero'],
+    ['Leads in the last 7 days', '=COUNTIFS(' + recv + ',">="&(NOW()-7))', 'stat'],
+    ['Leads in the last 30 days', '=COUNTIFS(' + recv + ',">="&(NOW()-30))', 'stat'],
+    ['Latest lead', '=IF(COUNTA(' + recv + ')<2,"—",TEXT(MAX(' + recv + '),"' + DATE_FORMAT + '"))', 'stat'],
+    ['', '', 'blank'],
+    ['PIPELINE', '', 'section'],
+    ['Called', '=COUNTIF(' + fu + ',"Called")', 'stat'],
+    ['Booked', '=COUNTIF(' + fu + ',"Booked")', 'stat'],
+    ['Won', '=COUNTIF(' + fu + ',"Won")', 'stat', 'green'],
+    ['Not interested', '=COUNTIF(' + fu + ',"Not interested")', 'stat'],
+    ['', '', 'blank'],
+    ['LEADS', '', 'section'],
+    ['Qualified', '=COUNTIF(' + status + ',"Qualified")', 'stat', 'green'],
+    ['Needs review', '=COUNTIF(' + status + ',"Needs review")', 'stat', 'amber'],
+    ['Unqualified', '=' + turnedAway, 'stat', 'red'],
+    ['Completion rate', '=IF(' + completed + '+' + turnedAway + '=0,"—",TEXT(' + completed + '/(' + completed + '+' + turnedAway + '),"0%"))', 'stat'],
+    ['', '', 'blank'],
+    ['TURNED AWAY — WHY', '', 'section'],
+    ['Renters', '=COUNTIF(' + uReason + ',"Renter*")', 'stat'],
+    ['Electric co-op area', '=COUNTIF(' + uReason + ',"Electric co-op*")', 'stat'],
+    ['Outside service area', '=COUNTIF(' + uReason + ',"Outside service*")', 'stat'],
+    ['', '', 'blank'],
+    ['LEADS BY WEEK', '', 'section']
   ];
-  sheet.getRange(1, 1, rows.length, 2).setValues(rows);
 
-  sheet.getRange('A1').setFontSize(16).setFontWeight('bold').setFontColor(INK);
-  sheet.getRange('A3:A6').setFontWeight('bold');
-  ['A8', 'A15'].forEach(function (a) {
-    sheet.getRange(a).setFontWeight('bold').setFontColor('#5B6670').setFontSize(9);
+  // Eight weeks, oldest first so the chart reads left to right. Each label is
+  // the Monday the week started; each value counts leads received that week.
+  var weekStart = rows.length + 1;
+  for (var k = 7; k >= 0; k--) {
+    var r = rows.length + 1;
+    rows.push([
+      '=TODAY()-WEEKDAY(TODAY(),2)+1-' + (7 * k),
+      '=COUNTIFS(' + recv + ',">="&A' + r + ',' + recv + ',"<"&A' + r + '+7)',
+      'week'
+    ]);
+  }
+
+  sheet.getRange(1, 1, rows.length, 2).setValues(rows.map(function (row) { return [row[0], row[1]]; }));
+
+  // Style by kind rather than by address, so rows can be reordered above.
+  var ACCENT = {
+    green: ['#D9F2E3', '#0B6B3A'],
+    amber: ['#FDF0D5', '#8A5A00'],
+    red: ['#FBE3E1', '#9B2C20']
+  };
+  rows.forEach(function (row, i) {
+    var r = i + 1;
+    var a = sheet.getRange(r, 1), b = sheet.getRange(r, 2);
+    switch (row[2]) {
+      case 'title':
+        a.setFontSize(16).setFontWeight('bold').setFontColor(INK);
+        sheet.setRowHeight(r, 40);
+        break;
+      case 'hero':
+        a.setFontSize(12).setFontWeight('bold').setFontColor(INK);
+        b.setFontSize(20).setFontWeight('bold').setFontColor(BRAND).setBackground(TINT);
+        sheet.setRowHeight(r, 44);
+        break;
+      case 'section':
+        a.setFontSize(9).setFontWeight('bold').setFontColor(MUTED);
+        sheet.setRowHeight(r, 30);
+        a.setVerticalAlignment('bottom');
+        break;
+      case 'week':
+        a.setNumberFormat('d mmm').setFontColor(MUTED);
+        sheet.setRowHeight(r, 22);
+        break;
+      case 'blank':
+        sheet.setRowHeight(r, 10);
+        break;
+      default:
+        a.setFontSize(11).setFontColor(INK);
+        b.setFontSize(11);
+    }
+    if (row[3] && ACCENT[row[3]]) b.setBackground(ACCENT[row[3]][0]).setFontColor(ACCENT[row[3]][1]).setFontWeight('bold');
   });
-  sheet.getRange('B3').setBackground('#D9F2E3').setFontColor('#0B6B3A').setFontWeight('bold');
-  sheet.getRange('B4').setBackground('#FDF0D5').setFontColor('#8A5A00').setFontWeight('bold');
-  sheet.getRange('B5').setBackground('#FBE3E1').setFontColor('#9B2C20').setFontWeight('bold');
-  sheet.getRange('B9').setBackground('#E5F5FC').setFontColor(BRAND).setFontWeight('bold');
-  sheet.getRange('B1:B' + rows.length).setHorizontalAlignment('left');
-  sheet.setColumnWidth(1, 300);
-  sheet.setColumnWidth(2, 200);
+  sheet.getRange(1, 2, rows.length, 1).setHorizontalAlignment('right').setVerticalAlignment('middle');
+  sheet.getRange(1, 1, rows.length, 1).setVerticalAlignment('middle');
+
+  sheet.setColumnWidth(1, 220);
+  sheet.setColumnWidth(2, 100);
   sheet.setFrozenRows(1);
   sheet.setHiddenGridlines(true);
-
   var extra = sheet.getMaxColumns() - 2;
   if (extra > 0) sheet.deleteColumns(3, extra);
+
+  // Sized to sit inside the two columns, so it is readable on a phone.
+  var chart = sheet.newChart()
+    .asColumnChart()
+    .addRange(sheet.getRange(weekStart, 1, 8, 2))
+    .setNumHeaders(0)
+    .setOption('title', 'Leads per week')
+    .setOption('titleTextStyle', { color: INK, fontSize: 12, bold: true })
+    .setOption('legend', { position: 'none' })
+    .setOption('colors', [BRAND])
+    .setOption('hAxis', { format: 'd MMM', textStyle: { color: MUTED, fontSize: 10 } })
+    .setOption('vAxis', { minValue: 0, format: '0', textStyle: { color: MUTED, fontSize: 10 }, gridlines: { color: '#E3E7EB' } })
+    .setOption('width', 320)
+    .setOption('height', 200)
+    .setPosition(rows.length + 2, 1, 0, 0)
+    .build();
+  sheet.insertChart(chart);
+
   return sheet;
+}
+
+function orderTabs_(book) {
+  [TABS.summary, TABS.leads, TABS.unqualified, TABS.consent].forEach(function (name, i) {
+    var sheet = book.getSheetByName(name);
+    if (!sheet) return;
+    book.setActiveSheet(sheet);
+    book.moveActiveSheet(i + 1);
+  });
 }
 
 /* ------------------------------------------------------------------ */
@@ -411,7 +633,11 @@ function colLetter_(n) {
 /** Last resort: keep the raw body so a failed write is never a lost lead. */
 function logFailure_(e, err) {
   var book = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = book.getSheetByName(TABS.errors) || book.insertSheet(TABS.errors);
+  var sheet = book.getSheetByName(TABS.errors);
+  if (!sheet) {
+    sheet = book.insertSheet(TABS.errors);
+    sheet.setTabColor(TAB_COLOURS[TABS.errors]);
+  }
   if (sheet.getLastRow() === 0) {
     sheet.appendRow(['When', 'Error', 'Raw submission']);
     sheet.getRange(1, 1, 1, 3).setFontWeight('bold').setBackground('#FBE3E1');

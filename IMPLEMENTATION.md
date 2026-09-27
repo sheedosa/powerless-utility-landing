@@ -200,14 +200,23 @@ business Google account) through an Apps Script web app,
 The script already carries the shared token, which matches `CONFIG.leadToken`
 in `app.js`; change both together or neither.
 
-Running `setup()` once from the script editor builds every tab. If it is ever
-skipped, the first submission builds them instead.
+Running `setup()` once from the script editor builds every tab. It is safe to
+run again: tabs that match the current layout are left alone, an empty tab in
+an older layout is rebuilt, and a tab with rows in an older layout is kept and
+reported (it keeps working — see "the header row is the contract" below). The
+Summary is rebuilt every time, since it holds nothing but formulas. If `setup()`
+is skipped, the first submission builds the tabs instead.
+
+The layout is designed for a phone as well as a desktop. The Sheets mobile app
+honours frozen panes, column widths, banding, conditional colours, dropdowns,
+tab colours and charts, and a phone shows the frozen column plus two or three
+more — so the first columns of each tab are the ones that matter.
 
 | Tab | Holds |
 | --- | --- |
-| `Summary` | The numbers at a glance: qualified, needs review, unqualified, completion rate, how many leads sit at each follow-up stage, why people were turned away, last 7 days, latest lead. All formulas, so it never goes stale. |
-| `Leads` | Everyone who finished the form, **newest on top**. 14 columns: Received, Status, Follow-up, Notes, Name, Phone, Email, Address, ZIP, Monthly bill, Shade, Roof age, Timeline, Source. |
-| `Unqualified` | Everyone the form turned away, newest on top, with the reason. No contact columns — they were never asked for them. |
+| `Summary` | Two narrow columns (220 + 100) that fit a phone without sideways scrolling. Top line: **New leads to call**. Then last 7 / 30 days, latest lead, the follow-up pipeline, qualified / needs review / unqualified, completion rate, why people were turned away, leads by week, and a column chart of the last 8 weeks. All formulas. |
+| `Leads` | Everyone who finished the form, **newest on top**. Column order is phone-first: **Name · Phone · Follow-up · Notes** are the first screen, then Received, Status, Email, Address, ZIP, Monthly bill, Shade, Roof age, Timeline, Source. |
+| `Unqualified` | Everyone the form turned away, newest on top: **Reason** first, then Received, ZIP, Address, Monthly bill, Owns home, Source. No contact columns — they were never asked for them. |
 | `Consent log` | The consent evidence for each lead — box state, version, the exact wording shown, visitor time and timezone, page, campaign, referrer — keyed by Event ID. Kept off `Leads` so the working view stays short. |
 | `Errors` | Only appears if a write ever fails, with the raw submission so nothing is lost. |
 
@@ -216,18 +225,34 @@ How the `Leads` tab is meant to be used:
 - **Status** is set by the form: `Qualified`, or `Needs review` when the ZIP is
   outside `servicePrefixes`. Colour-coded.
 - **Follow-up** is yours: a dropdown of New → Called → Booked → Won, or Not
-  interested. Every lead arrives as `New`. The Summary counts each stage, so
-  "New — not yet called" is the number to keep at zero.
-- **Notes** is free text for whatever happened on the call.
+  interested, colour-coded per stage. Every lead arrives as `New`. The Summary's
+  first line counts them, so "New leads to call" is the number to keep at zero.
+- **Notes** is free text and the only column that wraps, so a long note grows
+  its row and everything else stays one line.
 - The script never writes to an existing row, so Follow-up and Notes edits are
   safe. New leads are inserted above them.
+- **Email** is a `mailto:` link (opens the mail app on a phone). **Phone** is
+  plain text — `tel:` links in Sheets are unverified; test one on the phone
+  after the first real lead and it can be switched on.
 - **Source** is the `utm_source` if the link was tagged, else the referring
   site (e.g. `google.com`), else `Direct`.
 - Phone numbers are stored as `(832) 884-7302` and ZIPs as text, so Sheets can
   never turn them into numbers and drop characters.
+- Rows are zebra-banded, 28px tall, 11pt; the header row is frozen on every tab
+  and only `Leads` freezes its first column (Name). The header row carries a
+  warning-only protection so a stray tap cannot rename it silently.
+- Tab colours: Summary blue, Leads green, Unqualified grey, Consent log light
+  grey, Errors red — visible on the phone's tab strip.
 
 Things worth knowing:
 
+- **The header row is the contract.** Rows are written under whichever header
+  carries each field's name (`layoutOf_`), not by position. Columns can be
+  reordered in the script or dragged around in the sheet and existing rows
+  never drift. The Summary derives its column letters the same way.
+- **Timezone.** `setup()` sets the spreadsheet to `America/Chicago` / `en_US`.
+  `Received` is written as a real date and rendered in the spreadsheet's
+  timezone, which also drives the "last 7 days" and weekly counts.
 - **Why `text/plain`.** An `application/json` POST triggers a CORS preflight
   that Apps Script does not answer, and the submission fails. `leadEndpointFormat`
   defaults to `'text'` for that reason; the body is still JSON.
@@ -246,6 +271,10 @@ Things worth knowing:
 - **No IP address is recorded** — the browser cannot read its own, and Apps
   Script does not expose the caller's. `privacy.html` was updated on 27
   September 2026 to stop claiming it is.
+- **Not built, deliberately:** custom menus or sidebars (invisible in the
+  mobile app), per-stage tabs, an assigned-to column (single user), column
+  protections (would nag on legitimate edits), hidden tabs (cannot be unhidden
+  on a phone).
 
 ## Consent and enquiry data
 
