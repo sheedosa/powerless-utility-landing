@@ -30,7 +30,7 @@
        visible in this file, so it is a speed bump against drive-by bots, not a
        secret — it keeps a stranger who finds the URL from filling the sheet
        with junk. Must match SHARED_TOKEN in the Apps Script. */
-    leadToken: '',
+    leadToken: '0ab4012780309936280410d292c8b210',
     // Log visitors the funnel turns away, so the sheet shows the whole picture.
     logDisqualified: true,
     // Bump this whenever CONSENT_DISCLOSURE_HTML changes, so an existing consent
@@ -630,8 +630,8 @@
       consent: qualified ? state.consent : false,
       /* Consent evidence kept with the enquiry: the box state, the exact wording
          shown, its version, the submission time with timezone, and the page the
-         form was submitted from. The submitting IP address cannot be read from
-         the browser; see IMPLEMENTATION.md on what that means for the notice. */
+         form was submitted from. No IP address is recorded, and the privacy
+         notice says so. */
       consentRecord: qualified ? {
         given: state.consent,
         version: CONFIG.consentVersion,

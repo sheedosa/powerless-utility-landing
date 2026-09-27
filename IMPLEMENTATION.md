@@ -43,16 +43,11 @@ All prototype "props" are the `CONFIG` object at the top of `app.js`:
 
 ## Before launch
 
-1. **Confirm the enquiry destination with the owner, then set
-   `CONFIG.leadEndpoint`** to it (failures already surface the retry error and
-   re-enable the submit button). Keep any integration secret server-side — never
-   in this repo — send over HTTPS only, and restrict access to the people
-   handling enquiries. The browser cannot see the submitting IP address, so the
-   receiving endpoint has to record it alongside `consentRecord`; the published
-   privacy notice covers collecting it. Then run a real end-to-end test with
-   owner-authorised test details: submission, consent capture, delivery landing
-   in the destination, and an opt-out. A success message on the page does not
-   prove delivery.
+1. **Finish the Google Sheets hookup** — see "Google Sheets backend" below. The
+   sheet exists and the token is set; what remains is deploying the Apps Script
+   and putting its `/exec` URL in `CONFIG.leadEndpoint`. Then run a real
+   end-to-end test: one qualified submission and one renter, and check both rows
+   land in the right tabs. A success message on the page does not prove delivery.
 2. Replace `excludedZips` / `servicePrefixes` with real service-area data.
 3. **Settle the consent disclosure — see "Consent and enquiry data" below.**
    It is the one open item in the form that a code change alone cannot close.
@@ -199,45 +194,58 @@ nudges the page up if it would open past the bottom of a phone screen.
 
 ## Google Sheets backend
 
-`tools/google-sheets-backend.gs` is an Apps Script web app that writes every
-submission into a Google Sheet. Setup steps are in the header of that file; the
-short version is paste it into the sheet's Apps Script editor, set
-`SHARED_TOKEN`, deploy as a web app, then put the `/exec` URL in
-`CONFIG.leadEndpoint` and the same token in `CONFIG.leadToken`.
+Submissions go to the Google Sheet **Powerless Utility — Leads** (owned by the
+business Google account) through an Apps Script web app,
+`tools/google-sheets-backend.gs`. Setup steps are in the header of that file.
+The script already carries the shared token, which matches `CONFIG.leadToken`
+in `app.js`; change both together or neither.
 
-It builds and formats the sheet itself on first submission:
+Running `setup()` once from the script editor builds every tab. If it is ever
+skipped, the first submission builds them instead.
 
 | Tab | Holds |
 | --- | --- |
-| `Leads` | Everyone who completed the form — `Qualified`, or `Needs review` when the ZIP is outside `servicePrefixes`. Full contact details and consent evidence. |
-| `Unqualified` | Everyone the gating turned away, with the reason. No contact columns: the funnel stops before those are asked for. |
-| `Summary` | Live counts and a completion rate, written as formulas so hand-edits to the rows stay reflected. |
-| `Errors` | Only appears if a write ever throws — keeps the raw body so nothing is lost. |
+| `Summary` | The numbers at a glance: qualified, needs review, unqualified, completion rate, how many leads sit at each follow-up stage, why people were turned away, last 7 days, latest lead. All formulas, so it never goes stale. |
+| `Leads` | Everyone who finished the form, **newest on top**. 14 columns: Received, Status, Follow-up, Notes, Name, Phone, Email, Address, ZIP, Monthly bill, Shade, Roof age, Timeline, Source. |
+| `Unqualified` | Everyone the form turned away, newest on top, with the reason. No contact columns — they were never asked for them. |
+| `Consent log` | The consent evidence for each lead — box state, version, the exact wording shown, visitor time and timezone, page, campaign, referrer — keyed by Event ID. Kept off `Leads` so the working view stays short. |
+| `Errors` | Only appears if a write ever fails, with the raw submission so nothing is lost. |
 
-Things worth knowing before relying on it:
+How the `Leads` tab is meant to be used:
+
+- **Status** is set by the form: `Qualified`, or `Needs review` when the ZIP is
+  outside `servicePrefixes`. Colour-coded.
+- **Follow-up** is yours: a dropdown of New → Called → Booked → Won, or Not
+  interested. Every lead arrives as `New`. The Summary counts each stage, so
+  "New — not yet called" is the number to keep at zero.
+- **Notes** is free text for whatever happened on the call.
+- The script never writes to an existing row, so Follow-up and Notes edits are
+  safe. New leads are inserted above them.
+- **Source** is the `utm_source` if the link was tagged, else the referring
+  site (e.g. `google.com`), else `Direct`.
+- Phone numbers are stored as `(832) 884-7302` and ZIPs as text, so Sheets can
+  never turn them into numbers and drop characters.
+
+Things worth knowing:
 
 - **Why `text/plain`.** An `application/json` POST triggers a CORS preflight
   that Apps Script does not answer, and the submission fails. `leadEndpointFormat`
-  defaults to `'text'` for that reason; the body is still JSON. Switch to
-  `'json'` only for a backend that handles preflight.
+  defaults to `'text'` for that reason; the body is still JSON.
 - **The token is a speed bump, not a secret.** It sits in `app.js` where anyone
   can read it. It stops a stranger who finds the `/exec` URL from filling the
-  sheet with junk; it does not stop someone who reads the page source. If that
-  matters, put a real backend in front instead.
-- **Submissions are de-duplicated** on `eventId`, so a visitor who retries after
-  a failed delivery produces one row, not two.
-- **Re-deploy after editing the script.** Deploy → Manage deployments → edit →
-  Version: New version. Without that, the live URL keeps running the old code.
-- **Disqualified rows carry no consent**, because those visitors were never
-  asked for contact details. They are funnel data, not marketing contacts — do
-  not call or text anyone from the `Unqualified` tab.
+  sheet with junk; it does not stop someone who reads the page source.
+- **Retries are de-duplicated** on `eventId` using the script cache (6 hours).
+  Retries arrive within seconds, and unlike storing every id forever, the cache
+  can never fill up.
+- **Re-deploy after editing the script.** Deploy → Manage deployments → pencil
+  → Version: New version. Without that, the live URL keeps running the old code.
+- **Do not contact anyone on the `Unqualified` tab.** Those visitors never gave
+  a phone number or consent; the rows are funnel data only.
 - **What is not captured:** people who abandon the form part-way. Their
   half-entered details are never sent anywhere, which is deliberate.
-- **The privacy notice says IP addresses are recorded, and this backend does not
-  record them.** The browser cannot read its own IP, and Apps Script does not
-  expose the caller's. So either drop "IP address" from `privacy.html`, or put a
-  real endpoint in front that logs it. Right now the notice claims slightly more
-  collection than actually happens — harmless in direction, but it should match.
+- **No IP address is recorded** — the browser cannot read its own, and Apps
+  Script does not expose the caller's. `privacy.html` was updated on 27
+  September 2026 to stop claiming it is.
 
 ## Consent and enquiry data
 
@@ -253,8 +261,8 @@ Implements section 4 of the owner handoff (7 September 2026).
   disclosure text the visitor saw, `CONFIG.consentVersion`, the submission time
   in UTC with the visitor's IANA timezone and UTC offset, and the URL the form
   was submitted from. Bump `consentVersion` whenever the wording changes so old
-  records still identify what was actually shown. The submitting IP address must
-  be added server-side.
+  records still identify what was actually shown. It lands on the `Consent log`
+  tab of the leads sheet.
 - **UNRESOLVED — the disclosure wording needs an owner decision.** It currently
   reads "from **Powerless Utility** and its partners … including messages sent
   using an autodialer or prerecorded voice." The handoff explicitly declines to
