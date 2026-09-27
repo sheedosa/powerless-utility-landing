@@ -201,11 +201,11 @@ The script already carries the shared token, which matches `CONFIG.leadToken`
 in `app.js`; change both together or neither.
 
 Running `setup()` once from the script editor builds every tab. It is safe to
-run again: tabs that match the current layout are left alone, an empty tab in
-an older layout is rebuilt, and a tab with rows in an older layout is kept and
-reported (it keeps working — see "the header row is the contract" below). The
-Summary is rebuilt every time, since it holds nothing but formulas. If `setup()`
-is skipped, the first submission builds the tabs instead.
+run again: empty tabs are rebuilt so the latest layout and styling always
+apply; a tab that holds rows is never touched (it keeps working even in an
+older layout — see "the header row is the contract" below) and is reported if
+it is out of date. The Summary is rebuilt every time, since it holds nothing
+but formulas. If `setup()` is skipped, the first submission builds the tabs.
 
 The layout is designed for a phone as well as a desktop. The Sheets mobile app
 honours frozen panes, column widths, banding, conditional colours, dropdowns,
@@ -214,7 +214,7 @@ more — so the first columns of each tab are the ones that matter.
 
 | Tab | Holds |
 | --- | --- |
-| `Summary` | Two narrow columns (220 + 100) that fit a phone without sideways scrolling. Top line: **New leads to call**. Then last 7 / 30 days, latest lead, the follow-up pipeline, qualified / needs review / unqualified, completion rate, why people were turned away, leads by week, and a column chart of the last 8 weeks. All formulas. |
+| `Summary` | Two narrow columns (220 + 100) that fit a phone without sideways scrolling, nothing frozen. Top line: **New leads to call**. Then last 7 / 30 days, latest lead, the follow-up pipeline, qualified / needs review / unqualified, completion rate, why people were turned away, leads by week, and a column chart of the last 8 weeks with the count on each bar and no value axis (the table above carries the exact numbers). All formulas. |
 | `Leads` | Everyone who finished the form, **newest on top**. Column order is phone-first: **Name · Phone · Follow-up · Notes** are the first screen, then Received, Status, Email, Address, ZIP, Monthly bill, Shade, Roof age, Timeline, Source. |
 | `Unqualified` | Everyone the form turned away, newest on top: **Reason** first, then Received, ZIP, Address, Monthly bill, Owns home, Source. No contact columns — they were never asked for them. |
 | `Consent log` | The consent evidence for each lead — box state, version, the exact wording shown, visitor time and timezone, page, campaign, referrer — keyed by Event ID. Kept off `Leads` so the working view stays short. |
@@ -239,7 +239,9 @@ How the `Leads` tab is meant to be used:
 - Phone numbers are stored as `(832) 884-7302` and ZIPs as text, so Sheets can
   never turn them into numbers and drop characters.
 - Rows are zebra-banded, 28px tall, 11pt; the header row is frozen on every tab
-  and only `Leads` freezes its first column (Name). The header row carries a
+  and only `Leads` freezes its first column (Name). Data tabs start at 100 rows
+  rather than Google's 1,000, so a phone is not scrolling through screens of
+  blank rows; each new lead inserts its own row, so they never run out. The header row carries a
   warning-only protection so a stray tap cannot rename it silently.
 - Tab colours: Summary blue, Leads green, Unqualified grey, Consent log light
   grey, Errors red — visible on the phone's tab strip.

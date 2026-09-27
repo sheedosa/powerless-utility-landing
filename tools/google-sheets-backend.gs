@@ -31,11 +31,11 @@
  *     "Anyone" is needed because visitors' browsers send the form without
  *     signing in to Google. SHARED_TOKEN below is what stops strangers.
  *
- * RUNNING setup AGAIN is safe. Tabs that match the current layout are left
- * alone; an empty tab with an older layout is rebuilt; a tab with rows in an
- * older layout is kept as-is (it keeps working — the script writes each
- * field under its own header) and setup tells you how to migrate it.
- * The Summary is rebuilt every time, since it holds nothing but formulas.
+ * RUNNING setup AGAIN is safe. Empty tabs are rebuilt so the latest layout
+ * and styling always apply. A tab that already holds rows is never touched
+ * (it keeps working even in an older layout — the script writes each field
+ * under its own header) and setup tells you how to migrate it if it is out
+ * of date. The Summary is rebuilt every time: it holds nothing but formulas.
  *
  * AFTER EDITING THIS FILE: Deploy → Manage deployments → pencil icon →
  * Version: New version → Deploy. Otherwise the website keeps using the old copy.
@@ -62,6 +62,10 @@ var TINT = '#E5F5FC';
 var MUTED = '#5B6670';
 var BAND = '#F5F7F9';
 var DATE_FORMAT = 'd mmm yyyy, h:mm am/pm';
+/* Rows a data tab starts with. Google's default 1,000 blank rows mean
+   screens of empty scrolling on a phone; 100 keeps the tab finite, and each
+   new lead inserts its own row so it never runs out. */
+var STARTING_ROWS = 100;
 
 // Shown on the phone's tab strip, so the right tab can be found by colour.
 var TAB_COLOURS = {};
@@ -359,22 +363,22 @@ function ensureTab_(name, columns, notes) {
   var book = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = book.getSheetByName(name);
   if (!sheet) return buildTab_(name, columns);
-  if (headerMatches_(sheet, columns)) return sheet;
 
   var rows = Math.max(0, sheet.getLastRow() - 1);
   if (rows > 0) {
-    notes.push(name + ' has ' + rows + ' row' + (rows === 1 ? '' : 's') +
-      ' in an older column order. It keeps working. To get the new layout, ' +
-      'rename that tab (for example "' + name + ' old") and run setup again.');
+    if (!headerMatches_(sheet, columns)) {
+      notes.push(name + ' has ' + rows + ' row' + (rows === 1 ? '' : 's') +
+        ' in an older column order. It keeps working. To get the new layout, ' +
+        'rename that tab (for example "' + name + ' old") and run setup again.');
+    }
     return sheet;
   }
 
-  // Empty and out of date: replace it. Build the new one before deleting the
-  // old so the spreadsheet is never left without a tab.
+  // Empty: rebuild so the latest layout and styling always apply. Build the
+  // new tab before deleting the old so the spreadsheet is never without one.
   sheet.setName(name + ' (old)');
   var built = buildTab_(name, columns);
   book.deleteSheet(sheet);
-  notes.push('Rebuilt ' + name + ' with the new layout (it had no rows).');
   return built;
 }
 
@@ -394,9 +398,12 @@ function buildTab_(tabName, columns) {
   if (tabName === TABS.leads) sheet.setFrozenColumns(1);
   columns.forEach(function (c, i) { sheet.setColumnWidth(i + 1, c[2]); });
 
-  // Trim the unused columns to the right so the tab reads as one clean table.
+  // Trim the unused columns and the surplus blank rows so the tab reads as
+  // one clean, finite table (rows grow again as leads are inserted).
   var extra = sheet.getMaxColumns() - width;
   if (extra > 0) sheet.deleteColumns(width + 1, extra);
+  var surplus = sheet.getMaxRows() - STARTING_ROWS;
+  if (surplus > 0) sheet.deleteRows(STARTING_ROWS + 1, surplus);
 
   // Zebra rows keep the eye on one lead while swiping sideways on a phone.
   // The band must start at row 1: a row inserted at 2 then lands inside the
@@ -545,7 +552,8 @@ function buildSummary_() {
         a.setVerticalAlignment('bottom');
         break;
       case 'week':
-        a.setNumberFormat('d mmm').setFontColor(MUTED);
+        // Dates right-align by default; keep these in line with the labels.
+        a.setNumberFormat('d mmm').setFontColor(MUTED).setHorizontalAlignment('left');
         sheet.setRowHeight(r, 22);
         break;
       case 'blank':
@@ -562,12 +570,19 @@ function buildSummary_() {
 
   sheet.setColumnWidth(1, 220);
   sheet.setColumnWidth(2, 100);
-  sheet.setFrozenRows(1);
+  // Nothing frozen: on a phone a pinned title row is just lost space.
+  sheet.setFrozenRows(0);
   sheet.setHiddenGridlines(true);
   var extra = sheet.getMaxColumns() - 2;
   if (extra > 0) sheet.deleteColumns(3, extra);
+  // Just enough rows for the chart below the table, then the sheet ends.
+  var chartRow = rows.length + 2;
+  var surplus = sheet.getMaxRows() - (chartRow + 12);
+  if (surplus > 0) sheet.deleteRows(chartRow + 13, surplus);
 
-  // Sized to sit inside the two columns, so it is readable on a phone.
+  // The table above carries the exact numbers, so the chart is shape only:
+  // no value axis (with little data it shows 0.25 / 0.50 ticks), the count
+  // sits on each bar instead. Sized to fit inside the two columns on a phone.
   var chart = sheet.newChart()
     .asColumnChart()
     .addRange(sheet.getRange(weekStart, 1, 8, 2))
@@ -576,11 +591,15 @@ function buildSummary_() {
     .setOption('titleTextStyle', { color: INK, fontSize: 12, bold: true })
     .setOption('legend', { position: 'none' })
     .setOption('colors', [BRAND])
-    .setOption('hAxis', { format: 'd MMM', textStyle: { color: MUTED, fontSize: 10 } })
-    .setOption('vAxis', { minValue: 0, format: '0', textStyle: { color: MUTED, fontSize: 10 }, gridlines: { color: '#E3E7EB' } })
+    .setOption('series', { 0: { dataLabel: 'value', color: BRAND } })
+    .setOption('annotations', { alwaysOutside: true, textStyle: { color: INK, fontSize: 11, bold: true } })
+    .setOption('hAxis', { format: 'd MMM', slantedText: false, textStyle: { color: MUTED, fontSize: 10 }, gridlines: { color: 'transparent' } })
+    .setOption('vAxis', { viewWindow: { min: 0 }, textPosition: 'none', gridlines: { color: 'transparent', count: 0 }, minorGridlines: { count: 0 }, baselineColor: '#E3E7EB' })
+    .setOption('chartArea', { left: 12, top: 36, width: '92%', height: '68%' })
+    .setOption('bar', { groupWidth: '70%' })
     .setOption('width', 320)
     .setOption('height', 200)
-    .setPosition(rows.length + 2, 1, 0, 0)
+    .setPosition(chartRow, 1, 0, 0)
     .build();
   sheet.insertChart(chart);
 
