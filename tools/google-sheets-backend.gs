@@ -146,7 +146,8 @@ var UNQUALIFIED_COLUMNS = [
   ['Source', 'source', 120],
   ['Campaign', 'utmCampaign', 150],
   ['Ad set', 'adSet', 150],
-  ['Ad', 'ad', 150]
+  ['Ad', 'ad', 150],
+  ['Headline', 'headline', 90]
 ];
 
 var CONSENT_COLUMNS = [
@@ -162,7 +163,8 @@ var CONSENT_COLUMNS = [
   ['Timezone', 'timeZone', 130],
   ['Page', 'pageUrl', 240],
   ['Campaign', 'utmCampaign', 130],
-  ['Referrer', 'referrer', 200]
+  ['Referrer', 'referrer', 200],
+  ['Headline', 'headline', 90]
 ];
 
 /* ------------------------------------------------------------------ */
@@ -183,6 +185,11 @@ function setup() {
   rebuildCampaigns_();
 
   orderTabs_(book);
+  // Sweep any "<tab> (old)" left behind by a run that failed mid-rebuild.
+  Object.keys(TABS).forEach(function (k) {
+    var stale = book.getSheetByName(TABS[k] + ' (old)');
+    if (stale) book.deleteSheet(stale);
+  });
   var blank = book.getSheetByName('Sheet1');
   if (blank && blank.getLastRow() === 0 && book.getSheets().length > 1) book.deleteSheet(blank);
   book.setActiveSheet(book.getSheetByName(TABS.summary));
@@ -196,19 +203,22 @@ function setup() {
 
 /** The website POSTs each submission here. */
 function doPost(e) {
+  // Cheap checks first, outside the lock, so junk never queues behind real leads.
+  var payload = parseBody_(e);
+  if (!payload) return reply_(false, 'bad request');
+  if (String(payload.token || '') !== SHARED_TOKEN) return reply_(false, 'unauthorised');
+
   // One write at a time, so two submissions in the same second cannot collide.
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(20000);
   } catch (err) {
+    // Never lose a submission: park the raw data where it can be recovered.
+    try { logFailure_(e, 'busy: could not get the write lock within 20 seconds'); } catch (ignored) {}
     return reply_(false, 'busy');
   }
 
   try {
-    var payload = parseBody_(e);
-    if (!payload) return reply_(false, 'bad request');
-    if (String(payload.token || '') !== SHARED_TOKEN) return reply_(false, 'unauthorised');
-
     var row = flatten_(payload);
     if (isDuplicate_(row.eventId)) return reply_(true, 'duplicate ignored');
 
@@ -219,13 +229,16 @@ function doPost(e) {
       insertNewest_(TABS.leads, LEAD_COLUMNS, row);
       insertNewest_(TABS.consent, CONSENT_COLUMNS, row);
     }
+    // Only a fully written submission counts as seen, so a retry after a
+    // failed write can still succeed.
+    markSeen_(row.eventId);
     return reply_(true, 'ok');
   } catch (err) {
-    // Never lose a submission to a bug: park the raw data where it can be
-    // recovered by hand.
     try { logFailure_(e, err); } catch (ignored) {}
-    return reply_(false, String(err));
+    return reply_(false, 'error');
   } finally {
+    // Commit pending writes before the next submission takes the lock.
+    try { SpreadsheetApp.flush(); } catch (ignored) {}
     lock.releaseLock();
   }
 }
@@ -242,7 +255,8 @@ function doGet() {
 function parseBody_(e) {
   if (!e || !e.postData || !e.postData.contents) return null;
   try {
-    return JSON.parse(e.postData.contents);
+    var parsed = JSON.parse(e.postData.contents);
+    return (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) ? parsed : null;
   } catch (err) {
     return null;
   }
@@ -253,33 +267,41 @@ function flatten_(p) {
   var consent = p.consentRecord || {};
   return {
     receivedAt: new Date(),
-    status: p.status || '',
+    status: clean_(p.status),
     followUp: 'New',
     notes: '',
-    reason: p.reason || '',
-    name: p.name || '',
-    phone: formatPhone_(p.phone),
-    email: p.email || '',
-    address: p.address || '',
-    zip: p.zip || '',
-    bill: p.bill || '',
-    homeowner: p.homeowner || '',
-    shade: p.shade || '',
-    roofAge: p.roofAge || '',
-    timeline: p.timeline || '',
-    source: sourceOf_(p),
+    reason: clean_(p.reason),
+    name: clean_(p.name),
+    phone: clean_(formatPhone_(p.phone)),
+    email: clean_(p.email),
+    address: clean_(p.address),
+    zip: clean_(p.zip),
+    bill: clean_(p.bill),
+    homeowner: clean_(p.homeowner),
+    shade: clean_(p.shade),
+    roofAge: clean_(p.roofAge),
+    timeline: clean_(p.timeline),
+    source: clean_(sourceOf_(p)),
     consentGiven: p.consent ? 'Yes' : 'No',
-    consentVersion: consent.version || '',
-    consentDisclosure: consent.disclosure || '',
-    visitorTime: p.submittedAt || '',
-    timeZone: p.timeZone || '',
-    pageUrl: consent.pageUrl || p.landingPage || '',
-    utmCampaign: p.utmCampaign || '',
-    adSet: p.utmTerm || '',
-    ad: p.utmContent || '',
-    referrer: p.referrer || '',
-    eventId: p.eventId || ''
+    consentVersion: clean_(consent.version),
+    consentDisclosure: clean_(consent.disclosure),
+    visitorTime: clean_(p.submittedAt),
+    timeZone: clean_(p.timeZone),
+    pageUrl: clean_(consent.pageUrl || p.landingPage),
+    utmCampaign: clean_(p.utmCampaign),
+    adSet: clean_(p.utmTerm),
+    ad: clean_(p.utmContent),
+    referrer: clean_(p.referrer),
+    headline: clean_(p.headline),
+    eventId: clean_(p.eventId)
   };
+}
+
+/** Client text as plain text: a value starting with = + - @ would otherwise be
+    read as a formula when it lands in a cell. */
+function clean_(v) {
+  var s = (v === undefined || v === null) ? '' : String(v);
+  return /^[=+\-@]/.test(s) ? "'" + s : s;
 }
 
 /** +18328847302 -> (832) 884-7302, which is easier to read and to dial. */
@@ -301,15 +323,17 @@ function sourceOf_(p) {
 /**
  * A retried submission carries the same eventId, so write it once. Retries
  * arrive within seconds; a 6-hour cache covers them and, unlike storing every
- * id forever, can never fill up.
+ * id forever, can never fill up. The id is marked only after a successful
+ * write (markSeen_), so a retry after a failed write still gets through.
  */
 function isDuplicate_(eventId) {
   if (!eventId) return false;
-  var cache = CacheService.getScriptCache();
-  var key = 'seen_' + eventId;
-  if (cache.get(key)) return true;
-  cache.put(key, '1', 21600);
-  return false;
+  return !!CacheService.getScriptCache().get('seen_' + String(eventId).slice(0, 200));
+}
+
+function markSeen_(eventId) {
+  if (!eventId) return;
+  CacheService.getScriptCache().put('seen_' + String(eventId).slice(0, 200), '1', 21600);
 }
 
 /* ------------------------------------------------------------------ */
@@ -350,7 +374,7 @@ function insertNewest_(tabName, columns, row) {
   var digits = String(row.phone || '').replace(/\D/g, '');
   if (phone !== -1 && digits.length === 10) linkCell_(sheet.getRange(2, phone + 1), row.phone, CALL_PAGE + '#1' + digits);
   var email = indexOfField_(layout, 'email');
-  if (email !== -1 && row.email) linkCell_(sheet.getRange(2, email + 1), row.email, 'mailto:' + row.email);
+  if (email !== -1 && row.email) linkCell_(sheet.getRange(2, email + 1), row.email, 'mailto:' + String(row.email).replace(/[?#]/g, encodeURIComponent));
 }
 
 /**
@@ -422,7 +446,7 @@ function ensureTab_(name, columns, notes) {
 
   // Empty: rebuild so the latest layout and styling always apply. Build the
   // new tab before deleting the old so the spreadsheet is never without one.
-  sheet.setName(name + ' (old)');
+  retire_(book, sheet, name);
   var built = buildTab_(name, columns);
   book.deleteSheet(sheet);
   return built;
@@ -520,7 +544,7 @@ function buildTab_(tabName, columns) {
 function rebuildSummary_() {
   var book = SpreadsheetApp.getActiveSpreadsheet();
   var old = book.getSheetByName(TABS.summary);
-  if (old) old.setName(TABS.summary + ' (old)');
+  if (old) retire_(book, old, TABS.summary);
   var built = buildSummary_();
   if (old) book.deleteSheet(old);
   return built;
@@ -541,15 +565,15 @@ function buildSummary_() {
   var unqSheet = book.getSheetByName(TABS.unqualified);
   var L = leadsSheet ? layoutOf_(leadsSheet, LEAD_COLUMNS) : LEAD_COLUMNS;
   var U = unqSheet ? layoutOf_(unqSheet, UNQUALIFIED_COLUMNS) : UNQUALIFIED_COLUMNS;
-  var col = function (tab, layout, field) {
-    var letter = colLetter_(indexOfField_(layout, field) + 1);
+  var col = function (tab, layout, columns, field) {
+    var letter = fieldLetter_(layout, columns, field);
     return "'" + tab + "'!" + letter + ':' + letter;
   };
-  var recv = col(TABS.leads, L, 'receivedAt');
-  var status = col(TABS.leads, L, 'status');
-  var fu = col(TABS.leads, L, 'followUp');
-  var uRecv = col(TABS.unqualified, U, 'receivedAt');
-  var uReason = col(TABS.unqualified, U, 'reason');
+  var recv = col(TABS.leads, L, LEAD_COLUMNS, 'receivedAt');
+  var status = col(TABS.leads, L, LEAD_COLUMNS, 'status');
+  var fu = col(TABS.leads, L, LEAD_COLUMNS, 'followUp');
+  var uRecv = col(TABS.unqualified, U, UNQUALIFIED_COLUMNS, 'receivedAt');
+  var uReason = col(TABS.unqualified, U, UNQUALIFIED_COLUMNS, 'reason');
   var completed = 'MAX(0,COUNTA(' + recv + ')-1)';
   var turnedAway = 'MAX(0,COUNTA(' + uRecv + ')-1)';
 
@@ -687,7 +711,7 @@ function buildSummary_() {
 function rebuildCampaigns_() {
   var book = SpreadsheetApp.getActiveSpreadsheet();
   var old = book.getSheetByName(TABS.campaigns);
-  if (old) old.setName(TABS.campaigns + ' (old)');
+  if (old) retire_(book, old, TABS.campaigns);
   var built = buildCampaigns_();
   if (old) book.deleteSheet(old);
   return built;
@@ -705,7 +729,7 @@ function buildCampaigns_() {
 
   var leadsSheet = book.getSheetByName(TABS.leads);
   var L = leadsSheet ? layoutOf_(leadsSheet, LEAD_COLUMNS) : LEAD_COLUMNS;
-  var letter = function (field) { return colLetter_(indexOfField_(L, field) + 1); };
+  var letter = function (field) { return fieldLetter_(L, LEAD_COLUMNS, field); };
   var full = function (field) { var c = letter(field); return "'" + TABS.leads + "'!" + c + ':' + c; };
   var body = function (field) { var c = letter(field); return "'" + TABS.leads + "'!" + c + '2:' + c; };
   var camp = full('utmCampaign'), ad = full('ad'), fu = full('followUp');
@@ -762,6 +786,15 @@ function buildCampaigns_() {
   return sheet;
 }
 
+/** Moves a tab aside as "<name> (old)", clearing any leftover from a run that
+    failed between renaming and deleting, so setup() can never get wedged. */
+function retire_(book, sheet, name) {
+  var oldName = name + ' (old)';
+  var stale = book.getSheetByName(oldName);
+  if (stale && stale !== sheet) book.deleteSheet(stale);
+  sheet.setName(oldName);
+}
+
 function orderTabs_(book) {
   [TABS.summary, TABS.leads, TABS.campaigns, TABS.unqualified, TABS.consent].forEach(function (name, i) {
     var sheet = book.getSheetByName(name);
@@ -787,6 +820,15 @@ function textRule_(text, bg, fg, range) {
     .whenTextEqualTo(text).setBackground(bg).setFontColor(fg).setBold(true)
     .setRanges([range])
     .build();
+}
+
+/** Column letter of a field in the live layout; if a tab in an older layout
+    lacks the field, point at where it will be after migration rather than
+    emitting a broken "'Leads'!:" reference. */
+function fieldLetter_(layout, columns, field) {
+  var i = indexOfField_(layout, field);
+  if (i === -1) i = indexOfField_(columns, field);
+  return colLetter_(i + 1);
 }
 
 function indexOfField_(columns, field) {

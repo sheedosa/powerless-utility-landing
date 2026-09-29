@@ -17,8 +17,8 @@
   .call-card{width:100%;max-width:420px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:28px 24px;text-align:center}
   .call-label{font-family:var(--mono);font-weight:600;font-size:13px;letter-spacing:.08em;color:var(--muted);margin:0 0 10px}
   .call-number{font-family:var(--display);font-weight:800;font-size:clamp(28px,8vw,36px);letter-spacing:-0.01em;margin:0 0 20px;color:var(--ink);word-break:break-all}
-  .call-btn{display:block;width:100%;min-height:60px;line-height:60px;border-radius:8px;background:var(--brand);color:#FFFFFF;font-weight:600;font-size:19px;text-decoration:none}
-  .call-btn:hover{background:#0092CB;color:#FFFFFF}
+  .dial-btn{display:block;width:100%;min-height:60px;line-height:60px;border-radius:8px;background:var(--brand-dark);color:#FFFFFF;font-weight:600;font-size:19px;text-decoration:none}
+  .dial-btn:hover{background:#00688F;color:#FFFFFF}
   .call-hint{font-size:13px;color:var(--muted);margin:14px 0 0}
   .call-err{color:var(--error);font-size:15px;margin:0}
 </style>
@@ -35,8 +35,8 @@
 <main class="call-wrap">
   <div class="call-card" id="card">
     <p class="call-label">CALLING</p>
-    <p class="call-number" id="number">…</p>
-    <a class="call-btn" id="dial" href="#">Call</a>
+    <h1 class="call-number" id="number">…</h1>
+    <a class="dial-btn" id="dial" href="#">Call</a>
     <p class="call-hint">If your phone didn't open the dialler, tap Call.</p>
   </div>
 </main>

@@ -14,7 +14,9 @@
     // false -> they continue, but the lead is flagged needsReview:'REVIEW'
     strictZipGating: false,
     stickyCta: true,
-    exitIntent: true,
+    // Off: the popup promised an emailed estimate that nothing sends. Turn on
+    // only once a real email flow exists behind it.
+    exitIntent: false,
     // Replace with the real service-area data before launch.
     excludedZips: ['77327', '77328', '77331', '77335', '77350', '77351', '77360', '77364', '77371'],
     servicePrefixes: ['770', '771', '772', '773', '774', '775'],
@@ -97,8 +99,10 @@
   var ROOF_OPTS = ['0–10 yrs', '10–20 yrs', '20+ yrs', 'Not sure'];
   var TIME_OPTS = ['ASAP', '1–3 months', '3–6 months', 'Just researching'];
 
-  var PERSIST_KEYS = ['step', 'dq', 'bill', 'address', 'zip', 'city', 'stateCode', 'addressSource',
+  var PERSIST_KEYS = ['step', 'dq', 'done', 'bill', 'address', 'zip', 'city', 'stateCode', 'addressSource',
     'homeowner', 'shade', 'roofAge', 'timeline', 'needsReview'];
+  var POST_TIMEOUT_MS = 25000;
+  var HEADLINE_MAX = 90;
   var STORAGE_KEY = 'pu_lead_form';
   var MOBILE_MAX = 900;
 
@@ -112,6 +116,9 @@
     bill: null, homeowner: null, shade: null, roofAge: null, timeline: null,
     address: '', zip: '', city: '', stateCode: '', addressSource: '',
     name: '', phone: '', email: '', consent: false,
+    // One id per submission attempt, reused on retry so a lead saved just
+    // before a lost reply is never written twice. Cleared on success.
+    pendingEventId: '',
     errors: {}, submitting: false,
     exitOpen: false, exitEmail: '', exitDone: false, errExit: ''
   };
@@ -147,6 +154,9 @@
       PERSIST_KEYS.forEach(function (k) { if (k in saved) state[k] = saved[k]; });
     } catch (e) { /* storage unavailable — start fresh */ }
     if ([1, 2, 3].indexOf(state.step) === -1) state.step = 1; // guard stale persists
+    // A session saved before the address field existed has a ZIP but no
+    // address; never let it skip past step 1.
+    if (state.step > 1 && !String(state.address || '').trim()) state.step = 1;
   }
 
   function writeSession() {
@@ -189,8 +199,13 @@
   // Service-area gating still runs on a 5-digit ZIP, so pull the last one out of
   // whatever the visitor typed when no suggestion supplied it.
   function zipFromText(v) {
-    var found = String(v || '').match(/\b\d{5}\b/g);
-    return found ? found[found.length - 1] : '';
+    var text = String(v || '').trim();
+    var re = /\b\d{5}\b/g, m, last = '';
+    while ((m = re.exec(text))) {
+      // A 5-digit group that starts the address is a house number, not a ZIP.
+      if (m.index > 0) last = m[0];
+    }
+    return last;
   }
 
   var validate = {
@@ -560,8 +575,9 @@
       '<input id="pu-email" class="text-input" type="email" inputmode="email" autocomplete="email" placeholder="jane@example.com" ' +
         'value="' + esc(state.email) + '" data-field="email">' +
       errBlock('email') +
-      // Unchecked on every render — consent is never persisted or pre-ticked,
-      // and it is separate from accepting the terms.
+      // Never persisted across reloads or pre-ticked. It re-checks only if the
+      // visitor already ticked it in this session (e.g. after pressing Back).
+      // Separate from accepting the terms.
       '<label class="consent' + (state.errors.consent ? ' invalid' : '') + '" data-group="consent">' +
         '<input type="checkbox" data-field="consent"' + (state.consent ? ' checked' : '') + '>' +
         '<span>' + CONSENT_DISCLOSURE_HTML + '</span>' +
@@ -664,17 +680,30 @@
       return;
     }
     var asText = CONFIG.leadEndpointFormat !== 'json';
+    var ctrl = ('AbortController' in window) ? new AbortController() : null;
+    var timer = ctrl ? setTimeout(function () { ctrl.abort(); }, POST_TIMEOUT_MS) : null;
     fetch(CONFIG.leadEndpoint, {
       method: 'POST',
       // text/plain keeps this a "simple" request, so no preflight is sent.
       headers: { 'Content-Type': asText ? 'text/plain;charset=utf-8' : 'application/json' },
       body: JSON.stringify(payload),
-      keepalive: !!opts.keepalive
+      keepalive: !!opts.keepalive,
+      signal: ctrl ? ctrl.signal : undefined
     }).then(function (r) {
       if (!r.ok) throw new Error('HTTP ' + r.status);
+      // The endpoint reports refusals inside a 200 body ({ok:false}). Only an
+      // explicit ok:true means the row was written; anything else is a failure
+      // the visitor must see, not a success screen.
+      return r.text();
+    }).then(function (text) {
+      var body = null;
+      try { body = JSON.parse(text); } catch (e) {}
+      if (!body || body.ok !== true) throw new Error('rejected: ' + ((body && body.message) || 'unexpected reply'));
       if (opts.onSuccess) opts.onSuccess();
     }).catch(function (err) {
       if (opts.onFailure) opts.onFailure(err);
+    }).then(function () {
+      if (timer) clearTimeout(timer);
     });
   }
 
@@ -682,6 +711,8 @@
   function disqualify(reason, event) {
     state.dq = reason;
     track(event);
+    announce(DQ_COPY[reason] ? DQ_COPY[reason].h : 'Not eligible');
+    focusAfterRender = 'dq';
     if (CONFIG.logDisqualified) {
       // Fire and forget — nothing about their screen depends on it.
       postFunnel(funnelPayload('disqualified'), { keepalive: true });
@@ -706,7 +737,7 @@
 
   function dqView() {
     var copy = DQ_COPY[state.dq];
-    return '<div class="dq"><h2>' + esc(copy.h) + '</h2><p>' + esc(copy.p) + '</p>' +
+    return '<div class="dq"><h2 tabindex="-1" data-focus="dq">' + esc(copy.h) + '</h2><p>' + esc(copy.p) + '</p>' +
       '<button type="button" class="btn-link-brand" data-action="startOver">&#8592; Start over</button></div>';
   }
 
@@ -821,12 +852,14 @@
     state.submitting = true;
     setSubmitLabel();
 
-    var eventId = uuid();
+    if (!state.pendingEventId) state.pendingEventId = uuid();
+    var eventId = state.pendingEventId;
     var lead = funnelPayload('lead', eventId);
 
     function onSuccess() {
       track('lead_submitted', { eventId: eventId });
       state.submitting = false;
+      state.pendingEventId = '';
       state.done = true;
       focusAfterRender = 'success';
       announce('Request received.');
@@ -852,7 +885,7 @@
       step: 1, done: false, dq: null, needsReview: '',
       bill: null, homeowner: null, shade: null, roofAge: null, timeline: null,
       address: '', zip: '', city: '', stateCode: '', addressSource: '',
-      name: '', phone: '', email: '', consent: false, errors: {}
+      name: '', phone: '', email: '', consent: false, pendingEventId: '', errors: {}
     });
     if (els.live) els.live.textContent = '';
     render();
@@ -1055,14 +1088,23 @@
   function applyHeadline() {
     var q = new URLSearchParams(location.search);
     var override = q.get('headline') || q.get('h');
-    if (override && HEADLINES[override.toUpperCase()] && override.length === 1) {
-      headlineKey = override.toUpperCase();
+    var fallback = String(CONFIG.headlineVariant || 'A').charAt(0).toUpperCase();
+    if (!HEADLINES[fallback]) fallback = 'A';
+
+    if (override && override.length === 1) {
+      // A variant letter. A letter with no variant (?h=E) is a typo in an ad
+      // link, not a headline: show the default rather than the letter.
+      var key = override.toUpperCase();
+      headlineKey = HEADLINES[key] ? key : fallback;
       els.headline.innerHTML = HEADLINES[headlineKey];
       return;
     }
-    if (override) { headlineKey = 'custom'; els.headline.textContent = override; return; }
-    headlineKey = String(CONFIG.headlineVariant || 'A').charAt(0).toUpperCase();
-    if (!HEADLINES[headlineKey]) headlineKey = 'A';
+    if (override && override.length <= HEADLINE_MAX) {
+      headlineKey = 'custom';
+      els.headline.textContent = override;
+      return;
+    }
+    headlineKey = fallback;
     els.headline.innerHTML = HEADLINES[headlineKey];
   }
 
