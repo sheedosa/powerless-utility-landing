@@ -17,7 +17,8 @@ Built from the Claude Design handoff in `project/Powerless Utility Landing.dc.ht
 - `assets/reason-bill.{avif,webp,jpg}` — the one real photo from the prototype, served
   via `<picture>`; `reason-bill.png` is the untouched master, not referenced by the page
 - `assets/fonts/*.woff2` — self-hosted latin subsets of Archivo and IBM Plex
-  (SIL Open Font License 1.1), so the page makes no third-party requests
+  (SIL Open Font License 1.1). The only outside request the page makes is the
+  form submission to the Google Apps Script endpoint.
 
 No build step and no dependencies. Open `index.html` over HTTP (fonts and the
 form work from `file://` too, but serve it for realistic testing):
@@ -36,11 +37,11 @@ All prototype "props" are the `CONFIG` object at the top of `app.js`:
 | `companyName` | `'Powerless Utility'` | Name inside the TCPA consent text |
 | `strictZipGating` | `false` | `true` disqualifies out-of-area ZIPs; `false` lets them through flagged `needsReview: 'REVIEW'` |
 | `stickyCta` | `true` | Mobile sticky bottom CTA |
-| `exitIntent` | `true` | Desktop exit-intent email capture, once per session |
+| `exitIntent` | `false` | Desktop exit-intent email capture. **Off**: it promised an emailed estimate that nothing sends. Turn on only once a real email flow exists behind it |
 | `excludedZips` / `servicePrefixes` | Houston sample data | **Placeholder** — replace with the real service-area lists |
-| `leadEndpoint` | `null` | Where submissions go. The Apps Script `/exec` URL for the Google Sheet; `null` logs to the console and simulates success |
+| `leadEndpoint` | the Apps Script `/exec` URL | Where submissions go. `null` would log to the console and simulate success (never in production) |
 | `leadEndpointFormat` | `'text'` | `'text'` posts as `text/plain` (required by Apps Script); `'json'` for a normal API |
-| `leadToken` | `''` | Shared string the receiving script checks. Must match `SHARED_TOKEN` in the Apps Script |
+| `leadToken` | set | Shared string the receiving script checks. Must match `SHARED_TOKEN` in the Apps Script |
 | `logDisqualified` | `true` | Also record visitors the gating turns away, so the sheet shows the whole funnel |
 | `consentVersion` | `'2026-09-09.1'` | Stored with every consent record; bump it whenever `CONSENT_DISCLOSURE_HTML` changes |
 | `addressAutocomplete` | `{proxyUrl:'', apiKey:'', country:'us'}` | Address suggestions. **Off** until `proxyUrl` or `apiKey` is set — see "Address field" |
@@ -87,10 +88,11 @@ All prototype "props" are the `CONFIG` object at the top of `app.js`:
 
 ## Performance notes
 
-- Zero third-party requests **as shipped** — this stops being true the moment
-  `addressAutocomplete` gets a key or proxy URL (see "Address field"). Fonts are
-  self-hosted latin subsets; the two used above the fold (IBM Plex Sans 400,
-  Archivo 800) are preloaded, and all seven carry `font-display:swap`.
+- No third-party *code* is loaded. The only outside request is the form
+  submission to the Apps Script endpoint (plus Places, if `addressAutocomplete`
+  ever gets a key). Fonts are self-hosted latin subsets; the two used above the
+  fold (IBM Plex Sans 400, Archivo 800) are preloaded, and all seven carry
+  `font-display:swap`.
 - The one real photo ships as AVIF (42 KB) with WebP (44 KB) and JPEG (49 KB)
   fallbacks, pre-cropped to the aspect the slot actually displays. It was a
   646 KB PNG before — a 93% cut, and it was 98% of total page weight.
@@ -220,9 +222,9 @@ more — so the first columns of each tab are the ones that matter.
 | --- | --- |
 | `Summary` | Two narrow columns (220 + 100) that fit a phone without sideways scrolling, nothing frozen. Top line: **New leads to call**, then **Overdue** (still New after a day — turns red only when above zero). Then last 7 / 30 days, latest lead, the follow-up pipeline, qualified / needs review / unqualified, completion rate, why people were turned away, leads by week, and a column chart of the last 8 weeks with the count on each bar and no value axis (the table above carries the exact numbers). All formulas. |
 | `Leads` | Everyone who finished the form, **newest on top**. Column order is phone-first: **Name · Phone · Follow-up · Notes** are the first screen, then Received, Status, Email, Address, ZIP, Bill, Shade, Roof age, Timeline, Source, and at the far right Campaign, Ad set, Ad (from the ad link's utm tags). |
-| `Campaigns` | Which ads bring people who book. Two tables filled in by formulas over `Leads`: per campaign, and per ad within campaign — leads, booked, won, book rate. A new campaign appears on its own the first time a tagged lead arrives. Leads with no utm tag are not shown. |
-| `Unqualified` | Everyone the form turned away, newest on top: **Reason** first, then Received, ZIP, Address, Monthly bill, Owns home, Source. No contact columns — they were never asked for them. |
-| `Consent log` | The consent evidence for each lead — box state, version, the exact wording shown, visitor time and timezone, page, campaign, referrer — keyed by Event ID. Kept off `Leads` so the working view stays short. |
+| `Campaigns` | Which ads bring people who book. Two tables filled in by formulas over `Leads`: per campaign, and per ad within campaign — leads, booked, won, book rate. A new campaign appears on its own the first time a tagged lead arrives. Leads with no utm tag are not shown. Known limit: campaign names that differ only in case are listed separately but counted together — keep ad names consistently cased. |
+| `Unqualified` | Everyone the form turned away, newest on top: **Reason** first, then Received, ZIP, Address, Bill, Owns home, Source, Campaign, Ad set, Ad, Headline. No contact columns — they were never asked for them. |
+| `Consent log` | The consent evidence for each lead — box state, version, the exact wording shown, visitor time (UTC) and timezone, page, campaign, referrer, headline variant — keyed by Event ID. Kept off `Leads` so the working view stays short. |
 | `Errors` | Only appears if a write ever fails, with the raw submission so nothing is lost. |
 
 How the `Leads` tab is meant to be used:
@@ -244,7 +246,8 @@ How the `Leads` tab is meant to be used:
   across its width, and the Summary's Overdue line goes red. That is the
   one-call promise made visible.
 - Column headers carry a short note (hover on desktop, tap on a phone)
-  explaining Phone, Follow-up, Notes, Received, Status, Source and Reason.
+  explaining Phone, Follow-up, Notes, Received, Status, Source, Campaign,
+  Ad set, Ad, Reason and Event ID.
 - Received reads "Sat 27 Sep, 10:45 am" on the working tabs; the Consent log
   keeps the full date with the year for the record.
 - **Source** is the `utm_source` if the link was tagged, else the referring
@@ -256,8 +259,8 @@ How the `Leads` tab is meant to be used:
   rather than Google's 1,000, so a phone is not scrolling through screens of
   blank rows; each new lead inserts its own row, so they never run out. The header row carries a
   warning-only protection so a stray tap cannot rename it silently.
-- Tab colours: Summary blue, Leads green, Unqualified grey, Consent log light
-  grey, Errors red — visible on the phone's tab strip.
+- Tab colours: Summary blue, Leads green, Campaigns amber, Unqualified grey,
+  Consent log light grey, Errors red — visible on the phone's tab strip.
 
 Things worth knowing:
 
@@ -274,9 +277,18 @@ Things worth knowing:
 - **The token is a speed bump, not a secret.** It sits in `app.js` where anyone
   can read it. It stops a stranger who finds the `/exec` URL from filling the
   sheet with junk; it does not stop someone who reads the page source.
-- **Retries are de-duplicated** on `eventId` using the script cache (6 hours).
-  Retries arrive within seconds, and unlike storing every id forever, the cache
-  can never fill up.
+- **Delivery is verified, not assumed.** The script answers every outcome with
+  HTTP 200 and says what happened in the body (`{ok:true}` / `{ok:false}`), so
+  `postFunnel` reads the body and treats anything but `ok:true` — a refusal, a
+  sign-in page, a non-JSON reply, a 25-second timeout — as a failure the visitor
+  sees and can retry. A retry reuses the same `eventId`, and the script marks an
+  id as seen only after the rows are written (script cache, 6 hours), so a lead
+  saved just before a lost reply is written once, and a retry after a failed
+  write still gets through.
+- **Nothing is dropped silently.** A refused token or malformed body is rejected
+  before the write lock is taken; a lock timeout or a write error parks the raw
+  submission on the `Errors` tab and replies `ok:false`. Client text that starts
+  with `=`, `+`, `-` or `@` is stored as text, never as a formula.
 - **Re-deploy after editing the script.** Deploy → Manage deployments → pencil
   → Version: New version. Without that, the live URL keeps running the old code.
 - **Do not contact anyone on the `Unqualified` tab.** Those visitors never gave
@@ -311,9 +323,10 @@ and the `Campaigns` tab totals them up against Follow-up, so the question
 **Headline per ad.** Add `&h=B` (or `C`, `D`) to an ad's link and the landing
 page opens on that headline variant from `HEADLINES` in `app.js`, so the page
 can say what the ad said. `&h=any other text` uses that text verbatim. The
-variant shown travels with the lead as `headline`, and the full landing URL
-is on the Consent log's Page column, so headline performance can be read
-from the sheet too.
+variant shown is stored with the lead (`Headline` on the Consent log and
+Unqualified tabs), so headline performance can be read from the sheet. A
+single letter with no variant (`&h=E`) and custom text over 90 characters fall
+back to the default headline rather than showing the typo.
 
 Phase 2 (Meta Pixel + Conversions API from the Apps Script) and phase 3
 (sending Booked / Won back to Meta) are deliberately not built yet: both send
@@ -363,8 +376,7 @@ Implements section 4 of the owner handoff (7 September 2026).
   requirements where they apply.
 - **The privacy notice describes what the page does today** — enquiries, consent
   records, administrative service providers, and the solar provider preparing a
-  requested proposal. The page still makes zero third-party requests: no Meta
-  Pixel, no Google Analytics, no address autocomplete. `track()` only pushes to
+  requested proposal. The page loads no third-party code and, apart from the lead submission to the Apps Script endpoint, makes no outside request: no Meta Pixel, no Google Analytics, no address autocomplete. `track()` only pushes to
   `window.dataLayer`. **If any of those is added, update `privacy.html` to
   describe it accurately before the tool goes live.**
 
